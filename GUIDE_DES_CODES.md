@@ -1935,17 +1935,12 @@ main : 2,3× pire en position, 38× pire en orientation, 19,5× plus lent. Pour
 la branche dans le générateur reste le meilleur choix, et c'est ce que le dépôt
 continue de livrer.
 
-**2. Seulement 2 branches distinctes couvertes, pas 8.** Et ce n'est pas un
-effondrement des têtes : l'espace de travail n'offre réellement que **2,71
-branches valides par cible en moyenne** une fois l'orientation figée vers le
-bas. K = 8 est surdimensionné, six têtes sont redondantes, et deux d'entre elles
-(les têtes 1 et 4) oscillent entre branches à ~37 % de constance. Un K plus
-petit ferait probablement aussi bien — c'est l'expérience suivante, pas une
-affirmation.
-
-Cette observation recoupe la sonde du chapitre 22 : le long d'un rayon, il y
-avait toujours exactement 2 branches valides, puis zéro au-delà de la limite
-d'atteignabilité. Il n'y a jamais eu 8 branches à trouver ici.
+**2. Couverture partielle des branches.** ⚠️ *J'avais écrit ici que l'espace
+n'offrait que deux branches. C'est faux, et le chapitre 24 le corrige :* **quatre
+branches existent réellement** (`left-up-up` et `right-up-up` sur 100 % des
+cibles, `left-down-up` et `right-down-up` sur 36,2 %, les quatre autres jamais).
+Les têtes se concentrent sur les deux toujours disponibles. C'est donc une
+couverture **partielle**, mesurée depuis par le rappel par branche.
 
 **3. Le winner-take-all converge bruyamment.** L'erreur de validation oscille :
 
@@ -1982,3 +1977,127 @@ python experiments/multihypothesis_ik.py
 Environ 55 minutes sur CPU, dont 11 de génération du jeu de données — mis en
 cache dans `checkpoints/dataset_branches.npz`, donc les relances suivantes
 démarrent directement sur l'entraînement.
+
+---
+
+## 24. 🔢 Combien de têtes faut-il vraiment ?
+
+Le chapitre 23 avait laissé une question ouverte, et c'est le résultat lui-même
+qui l'avait posée : pourquoi huit têtes pour un espace qui n'offre au plus que
+quatre branches ?
+
+### 24.1 Ce que le sondage avait révélé
+
+Avant de répondre, une correction. J'avais écrit que l'espace de travail
+n'offrait que deux branches. C'est faux. Le sondage par branche donne :
+
+| Branche | Valide sur |
+| :-- | ---: |
+| `left-up-up` | **100 %** des cibles |
+| `right-up-up` | **100 %** |
+| `left-down-up` | 36,2 % |
+| `right-down-up` | 36,2 % |
+| les quatre autres | **jamais** |
+
+Donc **quatre branches existent réellement** — les combinaisons `wrist='down'`
+et `elbow='down'` ne produisent jamais de solution une fois l'orientation figée
+vers le bas. Les têtes se concentraient sur les deux toujours disponibles :
+c'était une couverture **partielle**, pas un espace pauvre.
+
+### 24.2 Le balayage
+
+Tout est tenu constant — même jeu de données en cache (empreinte `b9e74b3f`),
+même graine, mêmes 100 époques. Seul K varie.
+
+| K | Paramètres | Position | Orientation | Rappel | Latence |
+| --: | --: | --: | --: | --: | --: |
+| 1 | 660 k | 8,881 mm | 17,87° | 11,8 % | 4,34 ms |
+| **2** | 793 k | **0,314 mm** | **0,202°** | 36,7 % | 4,61 ms |
+| 4 | 1,06 M | 0,357 mm | 0,322° | 82,2 % | 5,23 ms |
+| 8 | 1,59 M | 0,439 mm | 0,278° | **86,8 %** | 5,67 ms |
+
+### 24.3 Le résultat : deux objectifs qui se contredisent
+
+**K = 2 est le plus précis.** 0,314 mm, mieux que K = 8 à 0,439 mm. Au-delà de
+deux têtes, les hypothèses supplémentaires n'achètent aucune précision et
+coûtent des paramètres et du temps.
+
+C'était la conclusion attendue. Mais elle est incomplète.
+
+**Le rappel, lui, continue de monter** : 36,7 % → 82,2 % → 86,8 %. La raison est
+simple une fois énoncée : **le best-of-K n'a besoin que d'UNE tête juste**.
+Retrouver l'ensemble des solutions en demande davantage.
+
+Le cas K = 2 l'illustre parfaitement. Sa spécialisation dit :
+
+```
+tête 0 -> left-up-up    constance 100%
+tête 1 -> right-up-up   constance 100%
+```
+
+mais son rappel dit :
+
+```
+left-up-up   0%      right-up-up   99%
+```
+
+Les deux ne se contredisent pas. La spécialisation attribue chaque tête à la
+branche dont elle est la **plus proche** — c'est toujours défini. Le rappel exige
+d'être à moins de 0,25 rad de la vraie solution. La tête 0 *pointe* vers
+`left-up-up` sans jamais y atterrir.
+
+Autrement dit : K = 2 atteint ses 0,314 mm **par une seule branche** qu'il
+reproduit à 99 %. C'est suffisant pour être précis, insuffisant pour couvrir.
+
+> **La réponse dépend donc de la question.** Une bonne solution ? K = 2.
+> L'ensemble des solutions — pour contourner un obstacle, ou choisir une branche
+> selon un critère en aval ? K = 8.
+
+### 24.4 Le témoin qui compte : K = 1
+
+8,881 mm. Même code, même perte, une seule tête.
+
+C'est le contrôle qui valide toute la démarche : la structure multivaluée du
+problème est **réelle**, et c'est le passage de une à deux têtes qui l'élimine,
+pas la machinerie autour.
+
+Attention toutefois : ce témoin n'a **aucun terme de données**, contrairement
+aux essais sur branches mélangées de l'ablation. Les deux chiffres ne sont pas
+directement comparables.
+
+### 24.5 Où passe réellement la latence
+
+C'est le chiffre le plus instructif du tableau, et il corrige ce que j'avais
+laissé entendre.
+
+K = 1 coûte déjà **4,34 ms**. K = 8 coûte 5,67 ms. **Le coût n'est donc pas les
+têtes** — chacune vaut environ 0,19 ms. C'est le fait de faire tourner la
+cinématique directe et la sélection **à l'inférence**, ce que le réseau à sortie
+unique (0,248 ms) ne fait jamais.
+
+Conséquence pratique : un déploiement qui aurait de toute façon besoin d'un test
+d'atteignabilité par FK — et le chapitre 22 a montré qu'il en faut un — paierait
+déjà l'essentiel de cette facture.
+
+### 24.6 Une réserve sur la stabilité
+
+La couverture n'est pas reproductible d'un K à l'autre :
+
+| Branche | K = 4 | K = 8 |
+| :-- | ---: | ---: |
+| `left-down-up` | 81 % | 27 % |
+| `right-down-up` | 0 % | 88 % |
+
+Le motif s'inverse. Quelles branches les têtes revendiquent n'est pas stable —
+conséquence connue du winner-take-all, et raison de ne pas surinterpréter un
+chiffre de couverture isolé.
+
+### 24.7 Rejouer
+
+```bash
+for K in 1 2 4 8; do MH_HEADS=$K python experiments/multihypothesis_ik.py; done
+```
+
+Le jeu de données est mis en cache après la première exécution, et son empreinte
+est reportée dans chaque fichier de résultats : « mêmes cibles » devient
+vérifiable au lieu d'être supposé.

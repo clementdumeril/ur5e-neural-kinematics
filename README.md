@@ -24,7 +24,7 @@ closed-loop Webots simulation.**
 | — against the closed-form solver | **11 % slower** | 0.223 ms — reported, not hidden |
 | Target localisation from camera | **~1 mm** | rebuilt from 148 mm |
 | What the physics term is worth | **21 %** | measured by ablation, not asserted |
-| Multi-valued IK, no branch labels | **0.425 mm** | vs 3.684 mm for a single-output network |
+| Multi-valued IK, no branch labels | **0.314 mm** | vs 3.684 mm for a single-output network |
 
 Three claims that appeared in earlier versions of this file were **measured and
 removed**: a speed advantage over the closed-form solver, a continuity advantage
@@ -254,11 +254,11 @@ Nothing tells the network which head should learn which branch.
 | :-- | ---: | ---: | ---: | :-: |
 | Single head, **one branch** | **0.187 mm** | **0.011°** | **0.248 ms** | yes |
 | Single head, mixed branches | 3.684 mm | 71.6° | 0.248 ms | no |
-| **8 heads, mixed branches** | **0.425 mm** | 0.415° | 4.84 ms | **no** |
+| **2 heads, mixed branches** | **0.314 mm** | 0.202° | 4.61 ms | **no** |
 
 Given the same unlabelled, branch-mixed data on which a single head manages only
 3.684 mm with an unusable 71.6° of orientation error, the multi-head network
-reaches **0.425 mm and 0.415°** — 8.7× better in position, 170× better in
+reaches **0.314 mm and 0.202°** — 12× better in position, 350× better in
 orientation, with no supervision about branches at all.
 
 *Best-of-K is a deployable rule, not a cheat:* at inference the forward
@@ -286,15 +286,62 @@ not a workspace that only offered two**. Per-branch recall is reported by the
 experiment script, using a periodic angular distance — two angles at +179° and
 −179° differ physically by 2°, not 358°, and a naive norm would mis-assign them.
 
+### How many heads do you actually need?
+
+The obvious follow-up: why 8 heads for a workspace offering at most 4 branches?
+The sweep holds everything else constant — same cached dataset (fingerprint
+`b9e74b3f`), same seed, same 100 epochs.
+
+| K | Parameters | Position | Orientation | Branch recall | Latency |
+| --: | --: | --: | --: | --: | --: |
+| 1 | 660 k | 8.881 mm | 17.87° | 11.8 % | 4.34 ms |
+| **2** | 793 k | **0.314 mm** | **0.202°** | 36.7 % | 4.61 ms |
+| 4 | 1.06 M | 0.357 mm | 0.322° | 82.2 % | 5.23 ms |
+| 8 | 1.59 M | 0.439 mm | 0.278° | **86.8 %** | 5.67 ms |
+
+**Accuracy and coverage are different objectives, and they disagree.**
+
+*K = 2 is the most accurate* — 0.314 mm, better than K = 8 at 0.439 mm. Past two
+heads, more hypotheses buy no accuracy and cost parameters and time. So far the
+expected conclusion.
+
+*But recall keeps climbing*, 36.7 % → 82.2 % → 86.8 %. Best-of-K only needs
+**one** head to be right; recovering the *whole* solution set needs more. K = 2
+reaches its 0.314 mm through a single branch it reproduces at 99 %, while the
+other head merely points in the direction of a second branch without landing on
+it. K = 8 reproduces three of the four branches above 88 %.
+
+So the answer depends on the question. **Want one good solution? K = 2. Want the
+solution set — for obstacle avoidance, or to pick a branch by some downstream
+criterion? K = 8.**
+
+*K = 1 is the control that matters*: same code, same loss, one head — 8.881 mm.
+The multi-valued structure of the problem is real, and it is the step from one
+head to two that removes it, not the machinery around it. (This control has no
+data term at all, unlike the ablation's mixed-branch runs, so the two numbers are
+not directly comparable.)
+
+### Where the latency actually goes
+
+K = 1 already costs 4.34 ms, and K = 8 costs 5.67 ms. **The cost is not the
+heads** — each additional head is worth about 0.19 ms. It is running the forward
+kinematics and the selection at inference at all, which the single-output network
+(0.248 ms) never does. A deployment that already needs an FK check for
+reachability would pay most of this anyway.
+
 ### Three honest caveats
 
 **It does not beat the engineering shortcut.** Against the hand-picked single
-branch it is 2.3× worse in position, 38× worse in orientation and roughly 20×
+branch, K = 2 is 1.7× worse in position, 18× worse in orientation and roughly 19×
 slower. For *this* task — one tool orientation, top-down grasping — forcing a
 branch in the generator remains the better choice, and the repository still ships
 that.
 
-**K = 8 is over-provisioned** for a workspace offering at most 4 branches.
+**Branch coverage is unstable across runs.** At K = 4 the `right-down-up` branch
+is recovered 0 % of the time while `left-down-up` reaches 81 %; at K = 8 the
+pattern inverts, 88 % against 27 %. Which branches the heads claim is not
+reproducible from one K to the next — a known consequence of winner-take-all,
+and a reason not to over-read any single coverage figure.
 
 **Winner-take-all converges noisily.** Validation error oscillates because the
 winner assignment keeps changing, which makes the objective non-stationary. The
@@ -304,7 +351,8 @@ saved checkpoint is the best epoch, not the last.
 pick a branch in advance — multiple tool orientations, obstacle avoidance needing
 an elbow-down route, or full SE(3) pose IK where the valid branch depends on the
 requested orientation. The value of the experiment is showing the ambiguity is
-solvable, and quantifying what solving it costs.
+solvable, quantifying what solving it costs, and establishing that two heads
+already capture most of the benefit.
 
 ---
 
