@@ -67,6 +67,8 @@ ur5e-neural-kinematics/
 │   │   ├── ur5e_6dof_ik.py       ← FK/IK analytique simplifiée
 │   │   ├── ur5e_se3_ik.py        ← FK par algèbre de Lie SE(3)
 │   │   ├── ikpy_ur5e_solver.py   ← IK numérique via la lib IKPY
+│   │   ├── jacobian.py           ← Jacobien géométrique + singularités
+│   │   ├── ik_dls.py             ← IK par moindres carrés amortis
 │   │   ├── ur5e_trajectory.py    ← trajectoires polynomiales quintiques
 │   │   └── ur5e.urdf             ← description du robot (pour IKPY)
 │   │
@@ -84,6 +86,7 @@ ur5e-neural-kinematics/
 ├── experiments/                  ← 🔬 CE QUI MESURE LES AFFIRMATIONS
 │   ├── ablation_physics_loss.py  ← la perte physique sert-elle ? (plan 2×3)
 │   ├── multihypothesis_ik.py     ← K têtes peuvent-elles trouver les branches ?
+│   ├── benchmark_solveurs.py     ← les cinq solveurs, chronométrés
 │   └── mesure_continuite.py      ← continuité et bord de l'espace atteignable
 │
 ├── webots/                       ← 🤖 ENVIRONNEMENT DE SIMULATION

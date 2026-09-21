@@ -19,11 +19,12 @@ closed-loop Webots simulation.**
 | :-- | ---: | :-- |
 | IK accuracy, validation | **0.185 mm** / 0.009° | 2 002 held-out targets |
 | IK accuracy, in simulation | **0.30 mm** | poses actually reached in Webots |
-| Inference time | **0.248 ms** | 1 000 calls, 200 warm-up discarded |
-| — against the iterative solver it replaces | **182× faster** | IKPY, 45.0 ms |
-| — against the closed-form solver | **11 % slower** | 0.223 ms — reported, not hidden |
+| Inference time, end to end | **0.543 ms** | 200 calls, 200 warm-up discarded |
+| — against a generic iterative solver | **~55× faster** | IKPY, 29.6 ms |
+| — against the closed-form solver | **2.3× slower** | 0.232 ms — reported, not hidden |
 | Target localisation from camera | **~1 mm** | rebuilt from 148 mm |
 | What the physics term is worth | **21 %** | measured by ablation, not asserted |
+| Jacobian, against finite differences | **3.2 × 10⁻¹⁰** | 200 random configurations |
 | Multi-valued IK, no branch labels | **0.314 mm** | vs 3.684 mm for a single-output network |
 
 Three claims that appeared in earlier versions of this file were **measured and
@@ -41,6 +42,7 @@ over analytic solvers, and the assertion that a supervised network "averages the
 - [Experiment 1 — What is the physics term actually worth?](#experiment-1--what-is-the-physics-term-actually-worth)
 - [Experiment 2 — Modelling the IK branches instead of avoiding them](#experiment-2--modelling-the-ik-branches-instead-of-avoiding-them)
 - [Experiment 3 — Continuity, and the reach boundary](#experiment-3--continuity-and-the-reach-boundary)
+- [Kinematics from first principles](#kinematics-from-first-principles)
 - [Benchmarks](#benchmarks)
 - [Limitations](#limitations)
 - [How the numbers were obtained](#how-the-numbers-were-obtained)
@@ -395,37 +397,100 @@ provide one.
 
 ---
 
-## Benchmarks
+## Kinematics from first principles
 
-1 000 timed calls after discarding 200 warm-up calls, single thread, on 300
-reachable targets drawn from the training workspace.
+Everything in this section is derived and validated here rather than called from
+a library.
 
-| Metric | IKPY (iterative) | Closed-form analytic | **Neural** |
-| :--- | ---: | ---: | ---: |
-| **Median compute time** | 45.0 ms | **0.223 ms** | 0.248 ms |
-| Mean compute time | 56.4 ms | 0.280 ms | 0.322 ms |
-| Position error at grasp point | — | exact | **0.30 mm** |
-| Differentiable | no | no | **yes** |
-| Fails loudly when out of reach | yes | yes | **no** |
+### The geometric Jacobian
 
-**Read this honestly.** The network is **not** faster than the closed-form
-solution — it is 11 % slower, and no neural network will beat a few dozen
-trigonometric operations. The first call additionally costs ~4.5 ms while PyTorch
-warms up.
+[`src/kinematics/jacobian.py`](src/kinematics/jacobian.py) builds the 6×6
+Jacobian column by column, straight from the geometry — no symbolic
+differentiation:
 
-What it does buy:
+$$J_{v,i} = z_{i-1} 	imes (p_e - p_{i-1}), \qquad J_{\omega,i} = z_{i-1}$$
 
-- **182× faster than IKPY**, the iterative numerical solver it actually replaces
-  — 0.25 ms against 45 ms;
-- **differentiable**, so it can sit inside an end-to-end learning pipeline, which
-  neither of the other two methods allows.
+Turning joint *i* rotates everything downstream about the axis $z_{i-1}$; the
+hand, at lever arm $p_e - p_{i-1}$, therefore moves with that cross product.
 
-That second point is now the only structural advantage this project can
-demonstrate. An earlier version of this table claimed 0.35–0.45 ms for the
-network against 0.50–0.85 ms for the analytic solver. That was measured without
-warm-up on a handful of calls, and was wrong in both directions.
+**Validated against finite differences**, not against itself: the analytic
+Jacobian is compared to a central-difference derivative of the forward
+kinematics over 200 random configurations.
+
+| Check | Result |
+| :-- | ---: |
+| Max deviation from numerical derivative | **3.2 × 10⁻¹⁰** |
+| Mean deviation | 1.5 × 10⁻¹⁰ |
+
+### Singularity measures
+
+| Configuration | Manipulability $\sqrt{\det(JJ^T)}$ | Condition number |
+| :-- | ---: | ---: |
+| Rest pose | 0.0287 | 16.5 |
+| Arm fully extended ($q = 0$) | **0.0000** | **∞** |
+
+The elongation singularity is detected exactly where it should be.
+
+### Damped least squares
+
+[`src/kinematics/ik_dls.py`](src/kinematics/ik_dls.py) solves the IK
+iteratively by linearising the kinematics and inverting the Jacobian — except
+that near a singularity the pseudo-inverse explodes. Levenberg–Marquardt damping
+keeps it bounded:
+
+$$\Delta q = J^T\left(JJ^T + \lambda^2 I
+ight)^{-1} e$$
+
+with $e$ the 6-vector pose error, its rotation part taken as the logarithm on
+SO(3). The damping is **adaptive**: zero when the arm is well conditioned,
+growing as the smallest singular value of $J$ approaches a threshold.
+
+**What the measurement showed.** From a single fixed start it either converges in
+about 23 iterations to sub-micron accuracy, or stalls in a local minimum tens of
+millimetres away — there is no middle ground, and it fails on **59.5 %** of
+workspace targets. This is not a tuning problem; it is what a local method does.
+Random restarts are the standard answer, and eight of them bring the failure rate
+to **0 %** at roughly double the cost.
+
+That contrast is the point of including DLS at all: it shows concretely what the
+closed-form solver buys, and what a generic method costs when you do not have one.
 
 ---
+
+## Benchmarks
+
+Reproduced by [`experiments/benchmark_solveurs.py`](experiments/benchmark_solveurs.py).
+200 targets, 200 warm-up calls discarded, single thread. Timings are measured at
+the call site — including the NumPy-to-tensor conversion the caller actually pays.
+
+| Solver | Median | Mean | p95 | Error | Failures | Differentiable |
+| :-- | ---: | ---: | ---: | ---: | ---: | :-: |
+| Closed-form analytic | **0.232 ms** | 0.272 | 0.488 | exact | 0 % | no |
+| Neural, single output | 0.543 ms | 0.607 | 1.196 | 0.165 mm | 0 % | **yes** |
+| Neural, 2 heads + selection | 4.911 ms | 5.085 | 7.679 | 0.253 mm | 0 % | **yes** |
+| Damped least squares, one start | 135.8 ms | 96.2 | 165.0 | exact | **59.5 %** | no |
+| Damped least squares, 8 restarts | 287.4 ms | 190.3 | 341.5 | exact | 0 % | no |
+| IKPY (iterative) † | 29.6 ms | 31.1 | 45.6 | — | 0 % | no |
+
+**Read this honestly.** The network is **2.3× slower** than the closed-form
+solution, not faster. No neural network will beat a few dozen trigonometric
+operations. What it buys is being **~55× faster than a generic iterative solver**
+and **differentiable**, which neither of the others is.
+
+† **IKPY is measured in its own frame, and its error is not comparable.** The
+URDF chain and this project's DH table do not describe the same robot: for
+identical joint angles the two forward kinematics place the end-effector **1.3 to
+1.8 m apart**. Evaluating IKPY on DH-frame targets measured that convention
+mismatch, not the solver. It is therefore given targets drawn from its own
+forward kinematics; only the timings are comparable. Reconciling the two models
+is open work.
+
+> **This table has now been corrected three times.** It once claimed the network
+> was faster than the closed-form solver (measured cold against warm). It then
+> claimed 0.248 ms by timing only the tensor forward pass, excluding the
+> conversion a caller cannot avoid. And it quoted a 182× speed-up over IKPY that
+> was measured across incompatible frames. Each correction made the project look
+> less impressive and the numbers more trustworthy.
 
 ## Limitations
 
@@ -435,7 +500,7 @@ warm-up on a handful of calls, and was wrong in both directions.
 | **Fails silently out of reach**, up to 1.46 m of error with no signal. | Experiment 3 |
 | **One tool orientation only.** The gripper cannot approach from the side. | `ROT_DOWN` hard-coded in the generator |
 | **One IK branch** in the shipped model. It cannot route around an obstacle via the elbow-down family. | generator forces `wrist='up', shoulder='left', elbow='up'` |
-| **Not faster than the closed-form solver** — 11 % slower. The speed claim is against IKPY, not against trigonometry. | Benchmarks |
+| **Not faster than the closed-form solver** — 2.3× slower. The speed claim is against generic iterative solvers, not against trigonometry. | Benchmarks |
 | **The grasp height sits 20 mm below the trained $z$ range** ($z = 0.030$ against a learned $[0.05, 0.45]$). Error stays at 0.30 mm, so it is not urgent, but retraining on $z \in [0.02, 0.45]$ would be cleaner. | `GRASP_Z` against the generator bounds |
 
 ---
@@ -470,13 +535,14 @@ method that caught them is worth more than any single result.
 ur5e-neural-kinematics/
 ├── src/
 │   ├── kinematics/              # DH forward kinematics (NumPy and differentiable
-│   │                            # PyTorch), closed-form IK, SE(3) product of
-│   │                            # exponentials, quintic trajectories, IKPY baseline
+│   │                            # PyTorch), geometric Jacobian, damped least-squares
+│   │                            # IK, closed-form IK, SE(3) product of exponentials,
+│   │                            # quintic trajectories, IKPY baseline
 │   ├── models/                  # pinn.py (single head), multihead.py (K heads + WTA)
 │   ├── training/                # physics-informed and supervised training scripts
 │   └── control/ur5.py           # robot driver, IK bridge, perception
 │
-├── experiments/                 # ablation, multi-hypothesis IK, continuity
+├── experiments/                 # ablation, multi-hypothesis IK, continuity, solver benchmark
 ├── webots/                      # worlds and scenario controllers
 ├── checkpoints/                 # trained weights and raw experiment results
 ├── vision/  data/               # CNN detector (negative result), camera calibration

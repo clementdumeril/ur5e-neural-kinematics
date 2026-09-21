@@ -1,0 +1,68 @@
+{
+  "n_cibles": 200,
+  "echauffement": 200,
+  "threads": 1,
+  "resultats": [
+    {
+      "solveur": "forme fermee analytique",
+      "temps_median_ms": 0.23235002299770713,
+      "temps_moyen_ms": 0.2720834978390485,
+      "temps_p95_ms": 0.48761509242467577,
+      "erreur_mediane_mm": 2.2447064458659097e-13,
+      "erreur_p95_mm": 5.736110546987331e-13,
+      "taux_echec": 0.0,
+      "differentiable": false
+    },
+    {
+      "solveur": "DLS, depart unique",
+      "temps_median_ms": 135.84340002853423,
+      "temps_moyen_ms": 96.21278600476217,
+      "temps_p95_ms": 164.9551800917833,
+      "erreur_mediane_mm": 1.0899783057098366e-05,
+      "erreur_p95_mm": 0.0008730321333311495,
+      "taux_echec": 0.595,
+      "differentiable": false
+    },
+    {
+      "solveur": "DLS, 8 relances",
+      "temps_median_ms": 287.3704000376165,
+      "temps_moyen_ms": 190.3257259936072,
+      "temps_p95_ms": 341.52420495520346,
+      "erreur_mediane_mm": 6.7593107068942825e-06,
+      "erreur_p95_mm": 0.0007687285092716329,
+      "taux_echec": 0.0,
+      "differentiable": false
+    },
+    {
+      "solveur": "IKPY (repere URDF) *",
+      "temps_median_ms": 29.6305000083521,
+      "temps_moyen_ms": 31.07336150307674,
+      "temps_p95_ms": 45.62501494656316,
+      "erreur_mediane_mm": 9.87784351905827e-06,
+      "erreur_p95_mm": 8.57177828692485e-05,
+      "taux_echec": 0.0,
+      "differentiable": false,
+      "note": "cibles et erreurs dans le repere URDF, non comparables aux autres"
+    },
+    {
+      "solveur": "reseau, sortie unique",
+      "temps_median_ms": 0.5432000034488738,
+      "temps_moyen_ms": 0.6074899982195348,
+      "temps_p95_ms": 1.1962150223553176,
+      "erreur_mediane_mm": 0.16479346347862037,
+      "erreur_p95_mm": 0.3923325324817888,
+      "taux_echec": 0.0,
+      "differentiable": true
+    },
+    {
+      "solveur": "reseau, 2 tetes + selection",
+      "temps_median_ms": 4.9106499645859,
+      "temps_moyen_ms": 5.0848494993988425,
+      "temps_p95_ms": 7.678569987183435,
+      "erreur_mediane_mm": 0.2531170130053203,
+      "erreur_p95_mm": 0.4679828471824458,
+      "taux_echec": 0.0,
+      "differentiable": true
+    }
+  ]
+}
