@@ -67,7 +67,7 @@ $$\mathcal{L}_{phys} = \frac{1}{N} \sum_{i=1}^{N} \left\| \text{FK}_{PyTorch}(q_
 Pour publier le projet proprement sur GitHub ou votre portfolio web, conservez la structure organisée suivante :
 
 ```
-pinn_ik_project/
+ur5e-neural-kinematics/
 ├── models/                               # Modèles et poids entraînés
 │   └── pinn_model_true_physics.pth
 ├── src/kinematics/                       # Utilitaires de cinématique et fonctions PyTorch

@@ -21,7 +21,7 @@ base_dir = _ROOT
 from ur5 import build_matrix, inverse_kinematics
 from pinn import PINN6DOF
 
-# --- Destination des modeles : toujours pinn_ik_project/models/, jamais le
+# --- Destination des modeles : toujours checkpoints/, jamais le
 # --- repertoire courant. C'est la que ur5.py va chercher les poids.
 MODELS_DIR = os.path.abspath(
     os.path.join(_ROOT, 'checkpoints'))

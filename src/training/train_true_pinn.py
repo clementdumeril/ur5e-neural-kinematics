@@ -23,7 +23,7 @@ from ur5 import build_matrix, inverse_kinematics
 from pinn import PINN6DOF
 from ur5_pytorch_fk import UR5ForwardKinematicsPyTorch
 
-# --- Destination des modeles : toujours pinn_ik_project/models/, jamais le
+# --- Destination des modeles : toujours checkpoints/, jamais le
 # --- repertoire courant. C'est la que ur5.py va chercher les poids.
 MODELS_DIR = os.path.join(_ROOT, 'checkpoints')
 os.makedirs(MODELS_DIR, exist_ok=True)

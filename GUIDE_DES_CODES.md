@@ -484,7 +484,7 @@ git init && git add . && git commit -m "Initial commit: PINN inverse kinematics 
 ```
 
 ```bash
-git branch -M main && git remote add origin https://github.com/TON-PSEUDO/pinn-ur5e-ik.git && git push -u origin main
+git branch -M main && git remote add origin https://github.com/TON-PSEUDO/ur5e-neural-kinematics.git && git push -u origin main
 ```
 
 ---
@@ -746,7 +746,7 @@ défectueux ont été modifiés.
 
 | # | Fichier | Correction |
 | :-: | :-- | :-- |
-| 8 | `src/training/train_true_pinn.py`<br>`src/training/train_supervised_ik.py`<br>`src/models/pinn.py` | Les trois scripts écrivaient leur `.pth` **dans le répertoire courant**, alors que `ur5.py` le lit dans `models/`. Ajout d'un helper `model_path()` qui résout systématiquement vers `pinn_ik_project/models/`. Plus besoin de déplacer le fichier à la main après un entraînement. |
+| 8 | `src/training/train_true_pinn.py`<br>`src/training/train_supervised_ik.py`<br>`src/models/pinn.py` | Les trois scripts écrivaient leur `.pth` **dans le répertoire courant**, alors que `ur5.py` le lit dans `models/`. Ajout d'un helper `model_path()` qui résout systématiquement vers `checkpoints/`. Plus besoin de déplacer le fichier à la main après un entraînement. |
 | 9 | `src/training/train_supervised_ik.py` | Chemin d'import corrigé : pointait vers `training/` (inexistant) au lieu de remonter d'un cran. Le script était inexécutable. |
 
 ### 13.4 Nettoyage

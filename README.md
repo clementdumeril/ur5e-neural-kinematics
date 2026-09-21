@@ -9,8 +9,6 @@ closed-loop Webots simulation.**
 [![Webots R2023a+](https://img.shields.io/badge/webots-R2023a+-green.svg)](https://cyberbotics.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-An end-to-end robotic automation and inverse kinematics (IK) solver for the **Universal Robots UR5e 6-DOF industrial manipulator**, leveraging a **True Physics-Informed Neural Network (PINN)** combined with a **Computer Vision target recognition pipeline** in a high-fidelity **Webots 3D physics simulation**.
-
 ![UR5e Single Robot Simulation](assets/webots_single_robot.png)
 
 > **Provenance.** The Webots scene and the base of `ur5.py` (DH kinematics,
@@ -213,8 +211,8 @@ ur5e-neural-kinematics/
 Clone the repository and install the dependencies:
 
 ```bash
-git clone https://github.com/clementdumeril/pinn-ur5e-ik.git
-cd pinn-ur5e-ik
+git clone https://github.com/clementdumeril/ur5e-neural-kinematics.git
+cd ur5e-neural-kinematics
 pip install -r requirements.txt
 ```
 
