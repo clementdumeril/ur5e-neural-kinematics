@@ -70,14 +70,14 @@ Pour publier le projet proprement sur GitHub ou votre portfolio web, conservez l
 pinn_ik_project/
 ├── models/                               # Modèles et poids entraînés
 │   └── pinn_model_true_physics.pth
-├── robotics_utils/                       # Utilitaires de cinématique et fonctions PyTorch
+├── src/kinematics/                       # Utilitaires de cinématique et fonctions PyTorch
 │   ├── ur5_pytorch_fk.py                 # Cinématique directe (FK) différenciable PyTorch
 │   └── ur5e_6dof_ik.py                   # Utilitaires géométriques
 ├── training/                             # Scripts d'entraînement
 │   ├── train_true_pinn.py                # Script d'entraînement principal du True PINN
-│   ├── train_pinn_6dof.py                # Générateur de dataset et architecture réseau
+│   ├── pinn.py                # Générateur de dataset et architecture réseau
 │   └── train_supervised_ik.py            # Baseline d'entraînement supervisé classique
-├── reference_ur5_repo/                   # Environnement Webots complet
+├──                    # Environnement Webots complet
 │   ├── ur5.py                            # Interface et contrôleur maître du robot
 │   └── simulation/
 │       ├── controllers/
@@ -101,14 +101,14 @@ pip install torch numpy scipy ikpy matplotlib
 
 ### Entraîner le Modèle True PINN
 ```bash
-python training/train_true_pinn.py
+python src/training/train_true_pinn.py
 ```
 
 ### Lancer la Simulation Webots
 1. **Simulation Monoposte (Pick & Place avec True PINN)** :
-   Ouvrir dans Webots : `reference_ur5_repo/simulation/worlds/my_first_simulation_pandahand.wbt`
+   Ouvrir dans Webots : `webots/worlds/my_first_simulation_pandahand.wbt`
 2. **Simulation Comparative (True PINN vs IKPY Math)** :
-   Ouvrir dans Webots : `reference_ur5_repo/simulation/worlds/pinn_vs_math.wbt`
+   Ouvrir dans Webots : `webots/worlds/pinn_vs_math.wbt`
 
 ---
 

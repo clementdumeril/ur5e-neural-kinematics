@@ -10,23 +10,18 @@ import sys
 import numpy as np
 from math import pi
 
-REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-PARENT_DIR = os.path.abspath(os.path.join(REPO_DIR, '..'))
-
-for p in [REPO_DIR, PARENT_DIR]:
-    if p not in sys.path:
-        sys.path.insert(0, p)
+_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+for _d in ('src/kinematics', 'src/models', 'src/control', 'src/training'):
+    _p = os.path.join(_ROOT, *_d.split('/'))
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+REPO_DIR = _ROOT
+PARENT_DIR = _ROOT
 
 from ur5 import UR5, forward_kinematics, inverse_kinematics, build_matrix
 from ur5e_se3_ik import UR5eSE3
 
 PI = pi
-
-# Rendre importable l'architecture du reseau (training/) et les utilitaires
-for extra in [os.path.join(PARENT_DIR, "training"),
-              os.path.join(PARENT_DIR, "robotics_utils")]:
-    if extra not in sys.path:
-        sys.path.insert(0, extra)
 
 # Charger le modele PINN 6-DOF.
 # On cherche en priorite le modele entraine sur la cinematique DH COMPLETE
@@ -35,11 +30,8 @@ for extra in [os.path.join(PARENT_DIR, "training"),
 # pinn_model_ur5e_6dof.pth a ete entraine sur la FK planaire simplifiee de
 # ur5e_6dof_ik.py et donne des positions fausses s'il est evalue avec le DH complet.
 PINN_CANDIDATES = [
-    os.path.join(PARENT_DIR, "models", "pinn_model_true_physics.pth"),
-    os.path.join(PARENT_DIR, "models", "pinn_model_webots.pth"),
-    os.path.join(PARENT_DIR, "models", "archive_models", "pinn_model_ur5e_6dof.pth"),
-    os.path.join(PARENT_DIR, "pinn_model_ur5e_6dof.pth"),
-    os.path.join(REPO_DIR, "pinn_model_ur5e_6dof.pth"),
+    os.path.join(_ROOT, "checkpoints", "pinn_model_true_physics.pth"),
+    os.path.join(_ROOT, "checkpoints", "pinn_model_webots.pth"),
 ]
 
 PINN_PATH = next((p for p in PINN_CANDIDATES if os.path.exists(p)), None)
@@ -49,7 +41,7 @@ pinn_model = None
 if PINN_PATH is not None:
     try:
         import torch
-        from train_pinn_6dof import PINN6DOF
+        from pinn import PINN6DOF
         pinn_model = PINN6DOF.from_file(PINN_PATH)
         pinn_model.eval()
         print(f"[PINN] Modele charge pour le Robot C : {os.path.basename(PINN_PATH)}")

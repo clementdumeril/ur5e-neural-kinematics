@@ -5,9 +5,12 @@ import os
 import sys
 from math import pi
 
-REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-if REPO_DIR not in sys.path:
-    sys.path.insert(0, REPO_DIR)
+_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+for _d in ('src/kinematics', 'src/models', 'src/control', 'src/training'):
+    _p = os.path.join(_ROOT, *_d.split('/'))
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+REPO_DIR = _ROOT
 
 from ur5 import UR5
 

@@ -4,7 +4,7 @@ Ce document explique **chaque fichier de code du projet**, ce qu'il fait, commen
 s'articule avec les autres, et comment publier le tout proprement sur GitHub.
 
 > **Fichier de simulation principal (à ouvrir dans Webots) :**
-> `reference_ur5_repo/simulation/worlds/my_first_simulation_pandahand.wbt`
+> `webots/worlds/my_first_simulation_pandahand.wbt`
 
 ---
 
@@ -22,7 +22,7 @@ s'articule avec les autres, et comment publier le tout proprement sur GitHub.
              └──────────────────────────┬──────────────────────────┘
                                         │  appelle
              ┌──────────────────────────▼──────────────────────────┐
-             │  reference_ur5_repo/ur5.py   = la CLASSE PILOTE     │
+             │  src/control/ur5.py   = la CLASSE PILOTE     │
              │  • lit la caméra / la position des objets           │
              │  • résout l'IK  →  2 chemins possibles :            │
              │        (a) use_pinn=True  → réseau de neurones      │
@@ -32,7 +32,7 @@ s'articule avec les autres, et comment publier le tout proprement sur GitHub.
              └───────┬──────────────────────────────┬──────────────┘
                      │                              │
       ┌──────────────▼────────────┐   ┌─────────────▼──────────────┐
-      │ models/                   │   │ robotics_utils/            │
+      │ models/                   │   │ src/kinematics/            │
       │ pinn_model_true_physics   │   │ solveurs mathématiques     │
       │ .pth  (poids entraînés)   │   │ (DH, SE(3), IKPY, quintic) │
       └──────────────▲────────────┘   └────────────────────────────┘
@@ -54,52 +54,67 @@ robot**, via une cinématique directe écrite en PyTorch et donc dérivable.
 ## 2. Arborescence commentée
 
 ```
-pinn_ik_project/
+ur5e-neural-kinematics/
 ├── README.md                     ← vitrine GitHub (anglais)
-├── DOCUMENTATION.md              ← rapport technique (français)
+├── CREDITS.md                    ← ce qui est herite, ce qui est developpe ici
+├── DOCUMENTATION.md              ← rapport technique (francais)
 ├── GUIDE_DES_CODES.md            ← CE DOCUMENT
-├── requirements.txt              ← dépendances Python
+├── requirements.txt              ← dependances Python
 │
-├── robotics_utils/               ← 🧮 BOÎTE À OUTILS MATHÉMATIQUE
-│   ├── ur5_pytorch_fk.py         ← FK dérivable PyTorch  ⭐ cœur du PINN
-│   ├── ur5e_6dof_ik.py           ← FK/IK analytique simplifiée
-│   ├── ur5e_se3_ik.py            ← FK par algèbre de Lie SE(3)
-│   ├── ikpy_ur5e_solver.py       ← IK numérique via la lib IKPY
-│   ├── ur5e_trajectory.py        ← trajectoires polynomiales quintiques
-│   └── ur5e.urdf                 ← description du robot (pour IKPY)
+├── src/
+│   ├── kinematics/               ← 🧮 BOÎTE À OUTILS MATHÉMATIQUE
+│   │   ├── ur5_pytorch_fk.py     ← FK dérivable PyTorch  ⭐ cœur du PINN
+│   │   ├── ur5e_6dof_ik.py       ← FK/IK analytique simplifiée
+│   │   ├── ur5e_se3_ik.py        ← FK par algèbre de Lie SE(3)
+│   │   ├── ikpy_ur5e_solver.py   ← IK numérique via la lib IKPY
+│   │   ├── ur5e_trajectory.py    ← trajectoires polynomiales quintiques
+│   │   └── ur5e.urdf             ← description du robot (pour IKPY)
+│   │
+│   ├── models/
+│   │   └── pinn.py               ← architecture du réseau (PINN6DOF)
+│   │
+│   ├── training/                 ← 🧠 ENTRAÎNEMENT
+│   │   ├── train_true_pinn.py    ← ⭐ script principal (perte hybride)
+│   │   └── train_supervised_ik.py ← référence sans physique
+│   │
+│   └── control/
+│       └── ur5.py                ← ⭐ classe pilote du robot
 │
-├── training/                     ← 🧠 ENTRAÎNEMENT DES RÉSEAUX
-│   ├── train_true_pinn.py        ← ⭐ script principal (PINN hybride)
-│   ├── train_pinn_6dof.py        ← définit l'architecture PINN6DOF + variante
-│   ├── train_supervised_ik.py    ← baseline sans physique (pour comparer)
-│   └── archive_training/         ← anciennes versions 3-DOF
+├── experiments/                  ← 🔬 CE QUI MESURE LES AFFIRMATIONS
+│   ├── ablation_physics_loss.py  ← la perte physique sert-elle ? (plan 2×3)
+│   └── mesure_continuite.py      ← continuité et bord de l'espace atteignable
 │
-├── models/                       ← 💾 POIDS ENTRAÎNÉS (.pth)
+├── webots/                       ← 🤖 ENVIRONNEMENT DE SIMULATION
+│   ├── worlds/                   ← ⭐ LES FICHIERS .wbt
+│   └── controllers/              ← les « scénarios » exécutés par Webots
+│       ├── ur5_controller_pandahand/  ← ⭐ pick & place principal
+│       ├── ur5_controller/            ← variante pince Robotiq 3F
+│       ├── comparison_controller/     ← superviseur HUD du duel
+│       ├── multi_controller/          ← duel à 3 robots
+│       └── data_collector/            ← calibration + dataset vision
+│
+├── checkpoints/                  ← 💾 POIDS ENTRAÎNÉS (.pth)
 │   ├── pinn_model_true_physics.pth  ← ⭐ celui que charge ur5.py
-│   ├── pinn_model_webots.pth        ← baseline supervisée
-│   └── archive_models/
+│   ├── pinn_model_webots.pth        ← référence supervisée
+│   └── ablation_physics_loss.json   ← résultats bruts de l'ablation
 │
-├── reference_ur5_repo/           ← 🤖 ENVIRONNEMENT WEBOTS COMPLET
-│   ├── ur5.py                    ← ⭐ classe pilote du robot (966 lignes)
-│   ├── ur5e_se3_ik.py            ← copie locale du solveur SE(3)
-│   ├── computer_vision/          ← modèle VGG16 de détection du cube
-│   ├── dataset/                  ← images + labels générés en simulation
-│   └── simulation/
-│       ├── controllers/          ← les « scénarios » exécutés par Webots
-│       │   ├── ur5_controller_pandahand/  ← ⭐ pick & place principal
-│       │   ├── ur5_controller/            ← variante pince Robotiq 3F
-│       │   ├── comparison_controller/     ← superviseur HUD du duel
-│       │   ├── multi_controller/          ← duel à 3 robots
-│       │   └── data_collector/            ← génération du dataset vision
-│       └── worlds/               ← ⭐ LES FICHIERS DE SIMULATION .wbt
-│
-├── archive_v1_custom_arm/        ← 📦 prototype v1 (bras 3-DOF maison)
+├── vision/                       ← détection du cube (CNN, résultat négatif)
+├── data/                         ← calibration caméra + labels
+├── tests/
+│   └── test_smoke.py             ← tout s'importe-t-il encore ?
 └── assets/                       ← captures d'écran pour la doc
 ```
 
+> **Note sur l'arborescence.** Elle a été réorganisée : `robotics_utils/`,
+> `training/` et `reference_ur5_repo/` ont laissé place à `src/`, `webots/`,
+> `experiments/` et `checkpoints/`. Les dossiers d'archive et les résidus du
+> dépôt amont ont été retirés — git en conserve l'historique. `tests/test_smoke.py`
+> existe précisément pour attraper les ruptures de chemin que cette
+> réorganisation aurait pu introduire.
+
 ---
 
-## 3. 🧮 `robotics_utils/` — la boîte à outils mathématique
+## 3. 🧮 `src/kinematics/` — la boîte à outils mathématique
 
 ### 3.1 `ur5_pytorch_fk.py` ⭐ *(le fichier le plus important du projet)*
 
@@ -139,7 +154,7 @@ plan tourné de `q1` autour de l'axe vertical, avec un outil de 10 cm) :
   3. `q2 = alpha − beta` (angle vers la cible moins l'angle interne du triangle),
   4. `q4 = −π/2 − (q2+q3)` force le poignet à la verticale, `q5 = −π/2`, `q6 = 0`.
 
-Ce solveur sert de **générateur d'étiquettes** pour `train_pinn_6dof.py`.
+Ce solveur sert de **générateur d'étiquettes** pour `pinn.py`.
 
 > ⚠️ À ne pas surinterpréter : le `0.0000 mm` retourné par la fonction est une
 > **constante écrite en dur**, pas une erreur mesurée. C'est cohérent (la solution
@@ -186,7 +201,7 @@ D'où les coefficients classiques `a₃ = 10Δq/T³`, `a₄ = −15Δq/T⁴`, `a
 
 ## 4. 🧠 `training/` — les scripts d'entraînement
 
-### 4.1 `train_pinn_6dof.py` — l'architecture du réseau
+### 4.1 `pinn.py` — l'architecture du réseau
 
 Contient la classe **`PINN6DOF`**, importée par tous les autres scripts et par
 `ur5.py`. C'est le fichier à lire en premier.
@@ -261,15 +276,9 @@ Même dataset, même architecture (512 neurones), mais **loss MSE sur les angles
 uniquement**, sans terme physique. Existe précisément pour démontrer par
 l'expérience l'apport du terme physique. Sortie → `pinn_model_webots.pth`.
 
-### 4.4 `archive_training/`
-
-`train_pinn.py` et `pinn_simulator.py` : versions historiques sur un bras 3-DOF,
-avec un mini serveur HTTP pour la visualisation web. Conservées comme trace de la
-démarche, non utilisées par le pipeline actuel.
-
 ---
 
-## 5. 🤖 `reference_ur5_repo/ur5.py` — la classe pilote (966 lignes)
+## 5. 🤖 `src/control/ur5.py` — la classe pilote (966 lignes)
 
 Base issue du travail d'**Allan Souza Almeida** (2023), étendue ici avec
 l'intégration PINN. C'est le pont entre les maths et Webots.
@@ -293,7 +302,7 @@ l'intégration PINN. C'est le pont entre les maths et Webots.
 la simulation démarre même sans TensorFlow ou sans PyTorch) :
 
 1. `computer_vision/vgg16.h5` (Keras) → détection du cube, attribut `self.model` ;
-2. `models/pinn_model_true_physics.pth` (PyTorch) → `self.pinn_model`.
+2. `checkpoints/pinn_model_true_physics.pth` (PyTorch) → `self.pinn_model`.
 
 L'attribut **`self.use_pinn`** (initialisé à `True`) est l'interrupteur qui décide,
 à chaque mouvement, quel solveur est utilisé.
@@ -389,16 +398,16 @@ C'est ce dataset qui alimente `computer_vision/train_vgg16.ipynb`.
 
 ---
 
-## 7. 🌍 Les fichiers de simulation (`simulation/worlds/`)
+## 7. 🌍 Les fichiers de simulation (`webots/worlds/`)
 
 **Chemin complet de la simulation principale :**
 
 ```
-reference_ur5_repo\simulation\worlds\my_first_simulation_pandahand.wbt
+webots/worlds/my_first_simulation_pandahand.wbt
 ```
 
 Chemin relatif depuis la racine du projet :
-`reference_ur5_repo/simulation/worlds/my_first_simulation_pandahand.wbt`
+`webots/worlds/my_first_simulation_pandahand.wbt`
 
 | Fichier `.wbt` | Contrôleur lancé | À quoi ça sert |
 | :-- | :-- | :-- |
@@ -414,20 +423,20 @@ Chemin relatif depuis la racine du projet :
 
 ---
 
-## 8. 📦 `archive_v1_custom_arm/` — le prototype v1
+## 8. 📦 Le prototype v1 — retiré du dépôt
 
-Première itération, sur un bras **anthropomorphe 3-DOF fait maison** (pas un UR5e) :
+La première itération portait sur un bras **anthropomorphe 3-DOF fait maison**
+(pas un UR5e) : FK analytique en numpy et PyTorch, réseau `PINNInverseKinematics`
+(3 → 128 → 3, SiLU), visualisation matplotlib avec sliders comparant le PINN au
+solveur DLS, et une démo web Three.js.
 
-- `robot_model.py` — FK analytique du bras 3 segments, en numpy et en PyTorch ;
-- `pinn_model.py` — réseau `PINNInverseKinematics` (3 → 128 → 3, SiLU) ;
-- `interactive_gui.py` — visualisation matplotlib 3D avec sliders, comparant le PINN
-  au solveur numérique DLS (Damped Least Squares) ;
-- `index.html` — la même démo en page web Three.js (OrbitControls / TransformControls) ;
-- `webots/` — mondes et contrôleurs de cette époque, dont un essai d'évitement
-  d'obstacle (`pinn_ik_avoidance`).
+Ce dossier **a été retiré de la branche principale**. Il montrait la progression
+3-DOF → 6-DOF industriel, mais une branche principale n'a pas à servir de
+grenier : git en conserve l'historique, et on le retrouve avec
 
-Utile à conserver : ça montre la progression 3-DOF → 6-DOF industriel. À présenter
-explicitement comme une **archive**, pas comme du code actif.
+```bash
+git log --all --diff-filter=D -- archive_v1_custom_arm/
+```
 
 ---
 
@@ -439,9 +448,9 @@ Le projet fait **344 Mo**, dont :
 
 | Élément | Taille | Problème |
 | :-- | :-- | :-- |
-| `reference_ur5_repo/computer_vision/vgg16.h5` | **160 Mo** | 🔴 GitHub **refuse** tout fichier > 100 Mo. |
-| `reference_ur5_repo/dataset/images/` | plusieurs milliers de `.jpg` | 🟠 Alourdit le clone pour rien. |
-| `reference_ur5_repo/.git/` | dépôt git imbriqué | 🔴 Casse le suivi de versions du dépôt parent. |
+| `vision/vgg16.h5` | **160 Mo** | 🔴 GitHub **refuse** tout fichier > 100 Mo. |
+| `data/images/` | plusieurs milliers de `.jpg` | 🟠 Alourdit le clone pour rien. |
+| `.git/` | dépôt git imbriqué | 🔴 Casse le suivi de versions du dépôt parent. |
 
 **Trois options pour `vgg16.h5` :**
 
@@ -463,7 +472,7 @@ c'est le résultat du projet.
 
 ### 9.3 Avant de pousser — checklist
 
-- [ ] Supprimer le dépôt git imbriqué : `rm -rf reference_ur5_repo/.git`
+- [ ] Supprimer le dépôt git imbriqué : `rm -rf .git`
 - [ ] Vérifier qu'aucun fichier > 100 Mo n'est indexé
 - [ ] Corriger dans le README la ligne `git clone https://github.com/your-username/…`
 - [ ] Aligner `requirements.txt` et le README (voir §10, point 4)
@@ -494,10 +503,9 @@ soutenance ou une mise en ligne publique.
    *Correctif :* renommer les DEF en `RED_BOX_PINN` / `RED_BOX_MATH` dans le `.wbt`,
    ou protéger `get_bottle_frame()` par un `if self.bottle is None: return None`.
 
-2. **`train_supervised_ik.py` — chemin d'import erroné.** Le script fait
-   `os.path.join(os.path.dirname(__file__), 'reference_ur5_repo')`, soit
-   `training/reference_ur5_repo/` qui n'existe pas. Il faut remonter d'un cran,
-   comme le fait correctement `train_true_pinn.py`.
+2. ~~**`train_supervised_ik.py` — chemin d'import erroné.**~~ **Corrigé.** Tous
+   les points d'entrée partagent désormais le même bloc d'amorçage, et
+   `tests/test_smoke.py` vérifie que chacun remonte bien à la racine.
 
 3. **Code mort.** `measure_ik_and_move()` dans le contrôleur pandahand (défini,
    jamais appelé) et `set_robot_joint()` dans `comparison_controller.py` (corps
@@ -524,14 +532,14 @@ soutenance ou une mise en ligne publique.
 
 | Je veux… | Fichier |
 | :-- | :-- |
-| Lancer la démo | `reference_ur5_repo/simulation/worlds/my_first_simulation_pandahand.wbt` |
-| Voir le duel PINN vs Maths | `reference_ur5_repo/simulation/worlds/pinn_vs_math.wbt` |
-| Comprendre le PINN | `training/train_true_pinn.py` + `robotics_utils/ur5_pytorch_fk.py` |
-| Voir l'architecture du réseau | `training/train_pinn_6dof.py` (classe `PINN6DOF`) |
+| Lancer la démo | `webots/worlds/my_first_simulation_pandahand.wbt` |
+| Voir le duel PINN vs Maths | `webots/worlds/pinn_vs_math.wbt` |
+| Comprendre le PINN | `src/training/train_true_pinn.py` + `src/kinematics/ur5_pytorch_fk.py` |
+| Voir l'architecture du réseau | `src/models/pinn.py` (classe `PINN6DOF`) |
 | Modifier le scénario de saisie | `.../controllers/ur5_controller_pandahand/ur5_controller_pandahand.py` |
 | Changer le solveur (IA ↔ maths) | attribut `ur5.use_pinn` (dans `ur5.py`) |
-| Réentraîner le modèle | `python training/train_true_pinn.py` |
-| Comparer les maths pures | `robotics_utils/` (`ur5e_6dof_ik`, `ur5e_se3_ik`, `ikpy_ur5e_solver`) |
+| Réentraîner le modèle | `python src/training/train_true_pinn.py` |
+| Comparer les maths pures | `src/kinematics/` (`ur5e_6dof_ik`, `ur5e_se3_ik`, `ikpy_ur5e_solver`) |
 
 ---
 
@@ -548,8 +556,8 @@ d'environnement, pas des fichiers absents.
 | Les 5 contrôleurs référencés par les `.wbt` existent | ✔ 5/5 |
 | Chaque contrôleur a bien son `.py` au nom du dossier (exigence Webots) | ✔ 5/5 |
 | Fichiers `.wbproj` présents pour les 6 mondes | ✔ 6/6 |
-| `models/pinn_model_true_physics.pth` chargé par `ur5.py` | ✔ présent, se charge (`hidden_dim=512`) |
-| `robotics_utils/ur5e.urdf` pour IKPY | ✔ présent et valide |
+| `checkpoints/pinn_model_true_physics.pth` chargé par `ur5.py` | ✔ présent, se charge (`hidden_dim=512`) |
+| `src/kinematics/ur5e.urdf` pour IKPY | ✔ présent et valide |
 | Dataset vision `dataset/images/` + `labels.csv` | ✔ 1000 images |
 | `computer_vision/vgg16.h5` | ✔ présent (160 Mo) |
 | `computer_vision/train_vgg16.ipynb` | ✔ notebook valide |
@@ -616,7 +624,7 @@ numpy>=1.20.0
 scipy>=1.7.0
 matplotlib>=3.4.0
 torch>=1.9.0
-ikpy>=3.3                 # ← manquant (robotics_utils/ikpy_ur5e_solver.py)
+ikpy>=3.3                 # ← manquant (src/kinematics/ikpy_ur5e_solver.py)
 scikit-image>=0.19        # ← manquant (ur5.py, import NON protégé ligne 16)
 tensorflow>=2.10          # ← manquant (chargement du VGG16)
 opencv-python             # ← manquant (data_collector)
@@ -639,23 +647,20 @@ main après chaque entraînement. Correctif d'une ligne :
 os.path.join(os.path.dirname(__file__), '..', 'models', 'pinn_model_true_physics.pth')
 ```
 
-**4. `multi_controller` ne trouve jamais son modèle.** Il cherche
-`pinn_model_ur5e_6dof.pth` à la racine du projet ou de `reference_ur5_repo/`, or le
-fichier est dans `models/archive_models/`. Le `except` silencieux fait alors
-basculer le **Robot C sur `inverse_kinematics()` analytique**. Autrement dit, dans
-`multi_ur5e_comparison.wbt`, les trois robots tournent aujourd'hui sur des maths —
-**le comparatif à 3 technologies ne démontre pas ce qu'il annonce**.
+**4. ~~`multi_controller` ne trouve jamais son modèle.~~ Corrigé.** Il cherchait
+`pinn_model_ur5e_6dof.pth` à des emplacements où il n'était pas, et le `except`
+silencieux faisait basculer le **Robot C sur l'IK analytique** : les trois robots
+de `multi_ur5e_comparison.wbt` tournaient sur des maths, et le comparatif à trois
+technologies ne démontrait pas ce qu'il annonçait. La liste de candidats pointe
+maintenant sur `checkpoints/pinn_model_true_physics.pth`, qui existe.
 
-À savoir aussi : ce modèle-là a été entraîné contre la FK **planaire simplifiée**
-(`ur5e_6dof_ik.py`), pas contre la FK DH complète. Mesuré contre le DH complet, son
-erreur est de ~970 mm — les deux conventions ne sont pas interchangeables.
+À savoir tout de même : l'ancien modèle avait été entraîné contre la FK
+**planaire simplifiée** (`ur5e_6dof_ik.py`), pas contre la FK DH complète.
+Mesuré contre le DH complet, son erreur atteignait ~970 mm — les deux
+conventions ne sont pas interchangeables. Ce monde reste **à relancer** pour
+vérifier le comparatif.
 
-**5. `training/archive_training/` a des imports cassés.** `train_pinn.py` et
-`pinn_simulator.py` font `from robot_model import UR5e3Axis` et
-`from pinn_model import PINNInverseKinematics`, mais ces deux fichiers sont dans
-`archive_v1_custom_arm/`, sans aucun `sys.path` pour les relier. Ces scripts ne
-peuvent pas s'exécuter tels quels. Comme c'est de l'archive, le plus honnête est de
-le noter dans un `README` local plutôt que de les réparer.
+**5. ~~`archive_training/` a des imports cassés.~~** Le dossier a été retiré.
 
 **6. Mélange de versions Webots.** `multi_ur5e_comparison.wbt` charge ses PROTO
 depuis la branche **R2025a**, les 5 autres mondes depuis **R2023a**. Sur une
@@ -719,7 +724,7 @@ défectueux ont été modifiés.
 | 1 | `simulation/worlds/pinn_vs_math.wbt` | `DEF bottle_pinn` → **`DEF RED_BOX_PINN`**, `DEF bottle_math` → **`DEF RED_BOX_MATH`**. Le contrôleur cherchait des DEF qui n'existaient pas → `AttributeError` au lancement. |
 | 2 | `controllers/ur5_controller_pandahand/` | `getFromDef("red_box_pinn")` → `getFromDef("RED_BOX_PINN")`, aligné sur les DEF du monde et sur la convention déjà utilisée pour `BLUE_TRAY_*`. |
 | 3 | `ur5.py` — `get_bottle_frame()` | Ajout d'un garde `if self.bottle is None: return None`. La méthode déréférençait `self.bottle` sans vérification, ce qui transformait un objet introuvable en crash au lieu d'un repli propre. |
-| 4 | `controllers/multi_controller/` | Le modèle était cherché à la racine du projet alors qu'il est dans `models/`. Remplacé par une **liste de chemins candidats**, avec `models/pinn_model_true_physics.pth` en priorité. Le Robot C exécute enfin réellement le réseau de neurones. |
+| 4 | `controllers/multi_controller/` | Le modèle était cherché à la racine du projet alors qu'il est dans `models/`. Remplacé par une **liste de chemins candidats**, avec `checkpoints/pinn_model_true_physics.pth` en priorité. Le Robot C exécute enfin réellement le réseau de neurones. |
 
 > Sur le point 4 : l'ancien `pinn_model_ur5e_6dof.pth` a été entraîné contre la FK
 > **planaire simplifiée**, alors que `multi_controller` mesure l'erreur avec la FK
@@ -741,8 +746,8 @@ défectueux ont été modifiés.
 
 | # | Fichier | Correction |
 | :-: | :-- | :-- |
-| 8 | `training/train_true_pinn.py`<br>`training/train_supervised_ik.py`<br>`training/train_pinn_6dof.py` | Les trois scripts écrivaient leur `.pth` **dans le répertoire courant**, alors que `ur5.py` le lit dans `models/`. Ajout d'un helper `model_path()` qui résout systématiquement vers `pinn_ik_project/models/`. Plus besoin de déplacer le fichier à la main après un entraînement. |
-| 9 | `training/train_supervised_ik.py` | Chemin d'import corrigé : pointait vers `training/reference_ur5_repo/` (inexistant) au lieu de remonter d'un cran. Le script était inexécutable. |
+| 8 | `src/training/train_true_pinn.py`<br>`src/training/train_supervised_ik.py`<br>`src/models/pinn.py` | Les trois scripts écrivaient leur `.pth` **dans le répertoire courant**, alors que `ur5.py` le lit dans `models/`. Ajout d'un helper `model_path()` qui résout systématiquement vers `pinn_ik_project/models/`. Plus besoin de déplacer le fichier à la main après un entraînement. |
+| 9 | `src/training/train_supervised_ik.py` | Chemin d'import corrigé : pointait vers `training/` (inexistant) au lieu de remonter d'un cran. Le script était inexécutable. |
 
 ### 13.4 Nettoyage
 
@@ -758,7 +763,7 @@ défectueux ont été modifiés.
 
 - ✅ Les 20 fichiers `.py` actifs compilent (`py_compile`)
 - ✅ `import ur5` fonctionne hors Webots (avec le mock `controller`)
-- ✅ `multi_controller` résout bien `models/pinn_model_true_physics.pth`
+- ✅ `multi_controller` résout bien `checkpoints/pinn_model_true_physics.pth`
 - ✅ Les DEF cherchés par les contrôleurs correspondent aux DEF des mondes (`pinn_vs_math` et `multi_ur5e_comparison`)
 - ✅ `pinn_vs_math.wbt` : accolades équilibrées (45/45)
 - ✅ `my_first_simulation_pandahand.wbt` : **non modifié**
@@ -776,13 +781,13 @@ depuis GitHub), **je n'y ai pas touché** — les aligner serait un risque inuti
 À noter seulement : ces mondes **nécessitent une connexion Internet** au premier
 chargement pour récupérer les PROTO distants.
 
-**c) `training/archive_training/`** : imports cassés (`robot_model`, `pinn_model`
-vivent dans `archive_v1_custom_arm/`). Laissé tel quel — c'est de l'archive
-historique, la réparer donnerait l'illusion d'un code maintenu.
-
-**d) Le benchmark du §12.4** reste le point le plus important à traiter avant une
-soutenance : en l'état, la baseline supervisée est plus précise que le PINN, ce qui
-contredit l'argumentaire du README.
+**d) ~~Le benchmark du §12.4.~~ Tranché par le chapitre 22.** On lisait ici que
+la référence supervisée était plus précise que le PINN, ce qui contredisait
+l'argumentaire du README. L'ablation a mesuré l'inverse sur les données du
+dépôt : **0,238 mm en supervisé contre 0,187 mm avec la perte physique**, soit
+21 % de mieux. Le chiffre qui avait fait naître ce doute provenait de modèles
+entraînés dans des conditions différentes — d'où l'ablation, qui tient tout
+constant sauf la variable étudiée.
 
 ---
 
@@ -927,7 +932,7 @@ Trois défauts empilés, mesurés et non supposés :
 | **1 — Calibration** | À la pose retenue, balaye une grille 9×9. Pour chaque position **connue** du cube, **détecte** ses pixels rouges dans l'image. Ajuste par moindres carrés la transformation affine `[x, y]_monde = A · [u, v, 1]`, et délimite la zone réellement visible. |
 | **2 — Collecte** | Tire 1000 positions **uniquement dans la zone visible**. Étiquette chaque image par le **centroïde mesuré**. Rejette les images où le bras masque le cube. |
 
-Sorties dans `reference_ur5_repo/dataset/` :
+Sorties dans `data/` :
 
 - `images/*.jpg` — 256×256, l'entrée du réseau
 - `labels.csv` — `filename, x_pixel, y_pixel` (repère 256×256, plus 512)
@@ -1458,14 +1463,14 @@ solutions, des singularités, et pas de formule générale pour un bras quelconq
 
 | Fichier | Rôle |
 | :-- | :-- |
-| `training/train_pinn_6dof.py` | définit la classe `PINN6DOF` (l'architecture) |
-| `robotics_utils/ur5_pytorch_fk.py` | la cinématique directe **dérivable** |
-| `training/train_true_pinn.py` | **le script d'entraînement** |
-| `models/pinn_model_true_physics.pth` | les poids entraînés |
+| `src/models/pinn.py` | définit la classe `PINN6DOF` (l'architecture) |
+| `src/kinematics/ur5_pytorch_fk.py` | la cinématique directe **dérivable** |
+| `src/training/train_true_pinn.py` | **le script d'entraînement** |
+| `checkpoints/pinn_model_true_physics.pth` | les poids entraînés |
 
 ### 21.4 Étape 1 — L'architecture
 
-`training/train_pinn_6dof.py:26`
+`src/models/pinn.py:26`
 
 ```python
 class PINN6DOF(nn.Module):
@@ -1505,7 +1510,7 @@ reçoit des radians.
 
 ### 21.5 Étape 2 — Fabriquer les données
 
-`training/train_true_pinn.py:40`
+`src/training/train_true_pinn.py:40`
 
 ```python
 xs = np.random.uniform( 0.0,  0.4, num_samples)
@@ -1544,7 +1549,7 @@ apprentissage / validation, lots de 256.
 
 ### 21.6 Étape 3 — La cinématique directe **en PyTorch**
 
-`robotics_utils/ur5_pytorch_fk.py` — **c'est ce fichier qui rend le projet
+`src/kinematics/ur5_pytorch_fk.py` — **c'est ce fichier qui rend le projet
 « physics-informed ».**
 
 La cinématique directe existait déjà en numpy. Mais numpy n'est **pas
@@ -1579,7 +1584,7 @@ différence.
 
 ### 21.7 Étape 4 — La perte hybride
 
-`training/train_true_pinn.py:119`
+`src/training/train_true_pinn.py:119`
 
 ```python
 for bx, by in train_loader:
@@ -1726,10 +1731,10 @@ seulement la cohérence interne du réseau.
 ### 21.11 Ré-entraîner
 
 ```bash
-python training/train_true_pinn.py
+python src/training/train_true_pinn.py
 ```
 
-Quelques minutes sur CPU. Le fichier `models/pinn_model_true_physics.pth` est
+Quelques minutes sur CPU. Le fichier `checkpoints/pinn_model_true_physics.pth` est
 écrasé dès qu'une époque améliore l'erreur de position.
 
 ### 21.12 À retenir en une phrase
@@ -1759,7 +1764,7 @@ attribuait à la perte un mérite que le code rendait impossible à démontrer.
 
 ### 22.1 Le plan d'expérience
 
-[training/ablation_physics_loss.py](training/ablation_physics_loss.py), plan
+[experiments/ablation_physics_loss.py](experiments/ablation_physics_loss.py), plan
 2 × 3. Tout est tenu constant — même graine, mêmes 20 201 cibles, même
 architecture, mêmes 100 époques, même planning de pas, même critère de
 sélection. Seules deux choses varient :
@@ -1838,8 +1843,8 @@ infiniment plus solide, parce qu'elle est mesurée.
 ### 22.6 Rejouer
 
 ```bash
-python training/ablation_physics_loss.py
+python experiments/ablation_physics_loss.py
 ```
 
 Environ 1 h sur CPU (11 min de génération, 6 entraînements). Les résultats bruts
-sont écrits dans `models/ablation_physics_loss.json`.
+sont écrits dans `checkpoints/ablation_physics_loss.json`.

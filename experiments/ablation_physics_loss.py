@@ -42,15 +42,15 @@ if 'controller' not in sys.modules:
     sys.modules['controller'] = type(
         'controller', (), {'Supervisor': type('Supervisor', (), {})})
 
-base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-for _d in [os.path.join(base_dir, 'reference_ur5_repo'),
-           os.path.join(base_dir, 'robotics_utils'),
-           os.path.dirname(os.path.abspath(__file__))]:
-    if _d not in sys.path:
-        sys.path.insert(0, _d)
+_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+for _d in ('src/kinematics', 'src/models', 'src/control', 'src/training'):
+    _p = os.path.join(_ROOT, *_d.split('/'))
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+base_dir = _ROOT
 
 from ur5 import build_matrix, inverse_kinematics          # noqa: E402
-from train_pinn_6dof import PINN6DOF                      # noqa: E402
+from pinn import PINN6DOF                      # noqa: E402
 from ur5_pytorch_fk import UR5ForwardKinematicsPyTorch    # noqa: E402
 
 ROT_DOWN = [math.pi, 0.0, -math.pi / 2]
@@ -270,7 +270,7 @@ def main():
         print(f"{r['nom']:<34} {r['best_pos_mm']:>9.3f} mm {r['best_rot_deg']:>10.3f} deg")
     print("=" * 74)
 
-    out = os.path.join(base_dir, 'models', 'ablation_physics_loss.json')
+    out = os.path.join(base_dir, 'checkpoints', 'ablation_physics_loss.json')
     with open(out, 'w', encoding='utf-8') as f:
         json.dump({'n_cibles': len(X), 'epoques': EPOCHS,
                    'branches_moyennes_par_cible': moy_branches,

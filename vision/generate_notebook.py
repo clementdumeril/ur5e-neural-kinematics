@@ -51,7 +51,7 @@ notebook = {
                 "    dataset_dir = './dataset'\n",
                 "else:\n",
                 "    # Au pire des cas, on force le chemin absolu direct\n",
-                "    dataset_dir = r'reference_ur5_repo\\dataset'\n",
+                "    dataset_dir = r'data'\n",
                 "\n",
                 "csv_path = os.path.join(dataset_dir, 'labels.csv')\n",
                 "img_dir = os.path.join(dataset_dir, 'images')\n",

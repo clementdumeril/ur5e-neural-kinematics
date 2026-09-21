@@ -41,14 +41,15 @@ if 'controller' not in sys.modules:
     sys.modules['controller'] = type(
         'controller', (), {'Supervisor': type('Supervisor', (), {})})
 
-BASE = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-for _d in ['reference_ur5_repo', 'robotics_utils', 'training']:
-    p = os.path.join(BASE, _d)
-    if p not in sys.path:
-        sys.path.insert(0, p)
+_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+for _d in ('src/kinematics', 'src/models', 'src/control', 'src/training'):
+    _p = os.path.join(_ROOT, *_d.split('/'))
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+BASE = _ROOT
 
 from ur5 import build_matrix, inverse_kinematics          # noqa: E402
-from train_pinn_6dof import PINN6DOF                      # noqa: E402
+from pinn import PINN6DOF                      # noqa: E402
 from ur5_pytorch_fk import UR5ForwardKinematicsPyTorch    # noqa: E402
 
 ROT_DOWN = [math.pi, 0.0, -math.pi / 2]
@@ -99,7 +100,7 @@ def stats(sauts, nom):
 def main():
     fk = UR5ForwardKinematicsPyTorch()
     modele = PINN6DOF.from_file(
-        os.path.join(BASE, 'models', 'pinn_model_true_physics.pth'))
+        os.path.join(BASE, 'checkpoints', 'pinn_model_true_physics.pth'))
     modele.eval()
 
     cibles = trajectoire()

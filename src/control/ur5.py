@@ -69,23 +69,17 @@ import matplotlib.pyplot as plt
 
 import os
 import sys
-repo_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.abspath(os.path.join(repo_dir, '..'))
-if parent_dir not in sys.path:
-    sys.path.append(parent_dir)
-
-training_dir = os.path.join(parent_dir, 'training')
-if training_dir not in sys.path:
-    sys.path.append(training_dir)
-
-utils_dir = os.path.join(parent_dir, 'robotics_utils')
-if utils_dir not in sys.path:
-    sys.path.append(utils_dir)
+_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+for _d in ('src/kinematics', 'src/models', 'src/control', 'src/training'):
+    _p = os.path.join(_ROOT, *_d.split('/'))
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+parent_dir = _ROOT
 
 try:
     import torch
     import torch.nn as nn
-    from train_pinn_6dof import PINN6DOF
+    from pinn import PINN6DOF
 except ImportError as e:
     print(f"Could not load PyTorch or PINN6DOF: {e}")
     torch = None
@@ -522,7 +516,8 @@ class UR5:
         self.pinn_model = None
         if torch is not None:
             try:
-                pinn_path = os.path.join(parent_dir, "models", "pinn_model_true_physics.pth")
+                pinn_path = os.path.join(parent_dir, "checkpoints",
+                                         "pinn_model_true_physics.pth")
                 if os.path.exists(pinn_path):
                     self.pinn_model = PINN6DOF.from_file(pinn_path)
                     self.pinn_model.eval()

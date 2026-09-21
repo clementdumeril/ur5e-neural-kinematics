@@ -23,7 +23,7 @@ a identifier la convention d'axes de maniere fiable (595 px puis 817 px
 d'erreur), ce qui la faisait basculer dans un repli ou le critere de verticalite
 etait ignore. Mesurer coute quelques minutes de simulation et ne suppose rien.
 
-Sorties (dans reference_ur5_repo/dataset/)
+Sorties (dans data//)
 ------------------------------------------
   calibration.json    pose de lecture, homographie pixel -> monde, zone visible,
                       transformation outil -> camera
@@ -39,7 +39,11 @@ import random
 import numpy as np
 import cv2
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
+_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+for _d in ('src/kinematics', 'src/models', 'src/control', 'src/training'):
+    _p = os.path.join(_ROOT, *_d.split('/'))
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 
 from ur5 import UR5, build_matrix
 
@@ -247,7 +251,7 @@ def main():
         return
 
     base = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-    dataset_dir = os.path.join(base, 'dataset')
+    dataset_dir = os.path.join(base, 'data')
     img_dir = os.path.join(dataset_dir, 'images')
     os.makedirs(img_dir, exist_ok=True)
 

@@ -10,22 +10,21 @@ import math
 # Mock du Supervisor de Webots pour pouvoir importer ur5.py sans crasher
 sys.modules['controller'] = type('controller', (), {'Supervisor': type('Supervisor', (), {})})
 
-# Ajouter les chemins vers ur5.py (reference_ur5_repo/) et l'architecture du
-# reseau (training/). __file__ est dans training/, il faut donc remonter d'un cran.
-base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-for _d in [os.path.join(base_dir, 'reference_ur5_repo'),
-           os.path.join(base_dir, 'robotics_utils'),
-           os.path.dirname(os.path.abspath(__file__))]:
-    if _d not in sys.path:
-        sys.path.insert(0, _d)
+# Rendre importables les modules de src/ : ur5, pinn, cinematique.
+_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+for _d in ('src/kinematics', 'src/models', 'src/control', 'src/training'):
+    _p = os.path.join(_ROOT, *_d.split('/'))
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+base_dir = _ROOT
 
 from ur5 import build_matrix, inverse_kinematics
-from train_pinn_6dof import PINN6DOF
+from pinn import PINN6DOF
 
 # --- Destination des modeles : toujours pinn_ik_project/models/, jamais le
 # --- repertoire courant. C'est la que ur5.py va chercher les poids.
 MODELS_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..', 'models'))
+    os.path.join(_ROOT, 'checkpoints'))
 os.makedirs(MODELS_DIR, exist_ok=True)
 
 

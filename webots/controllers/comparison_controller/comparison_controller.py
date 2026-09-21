@@ -1,8 +1,11 @@
 import sys
 import os
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-if parent_dir not in sys.path:
-    sys.path.append(parent_dir)
+_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+for _d in ('src/kinematics', 'src/models', 'src/control', 'src/training'):
+    _p = os.path.join(_ROOT, *_d.split('/'))
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+parent_dir = _ROOT
 
 from controller import Supervisor
 

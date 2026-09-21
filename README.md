@@ -1,4 +1,8 @@
-# 🤖 Physics-Informed Neural Network (PINN) for 6-DOF UR5e Industrial Robot Inverse Kinematics
+# 🤖 UR5e Neural Kinematics
+
+**Physics-informed neural inverse kinematics for a 6-DOF industrial manipulator —
+benchmarked against closed-form and iterative solvers, and validated in
+closed-loop Webots simulation.**
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch 2.0+](https://img.shields.io/badge/pytorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
@@ -70,7 +74,7 @@ by a hair.
 
 The PINN is corrected on **where its hand actually lands**. The predicted angles
 are pushed through a Denavit–Hartenberg forward kinematics rewritten in PyTorch
-(`robotics_utils/ur5_pytorch_fk.py`), which makes it a differentiable link in the
+(`src/kinematics/ur5_pytorch_fk.py`), which makes it a differentiable link in the
 computation graph: the gradient travels through the geometry of the robot, and
 the quantity being minimised is **millimetres of end-effector error**.
 
@@ -120,7 +124,7 @@ PINN resolves this ambiguity."* That claim was **not tested by the experiment**:
 both dataset generators filter to a single solution family before training, so
 there was never anything to average. The claim is now replaced by a measurement.
 
-`training/ablation_physics_loss.py` runs a 2 × 3 design — everything held
+`experiments/ablation_physics_loss.py` runs a 2 × 3 design — everything held
 constant (same seed, same 20 201 targets, same architecture, same 100 epochs,
 same LR schedule, same selection criterion) except the two variables:
 
@@ -159,7 +163,7 @@ what makes this problem tractable; the physics-informed loss then buys a further
 other.
 
 ```bash
-python training/ablation_physics_loss.py     # ~1 h on CPU, writes models/ablation_physics_loss.json
+python experiments/ablation_physics_loss.py     # ~1 h on CPU, writes checkpoints/ablation_physics_loss.json
 ```
 
 ---
@@ -167,29 +171,36 @@ python training/ablation_physics_loss.py     # ~1 h on CPU, writes models/ablati
 ## 📂 Project Directory Structure
 
 ```
-pinn_ik_project/
-├── models/
-│   └── pinn_model_true_physics.pth     # Trained PyTorch PINN model weights
-├── robotics_utils/
-│   ├── ur5_pytorch_fk.py               # Differentiable PyTorch Forward Kinematics module
-│   └── ur5e_6dof_ik.py                 # Geometric UR5e kinematics utilities
-├── training/
-│   ├── train_true_pinn.py              # Main training script with hybrid loss (0.1 Data + 1.0 Physics)
-│   ├── train_pinn_6dof.py              # Synthetic workspace dataset generator & model architecture
-│   ├── train_supervised_ik.py          # Supervised baseline training script
-│   └── ablation_physics_loss.py        # 2x3 ablation: is the physics term worth it?
-├── reference_ur5_repo/
-│   ├── ur5.py                          # Main robot controller wrapper & IK bridge
-│   └── simulation/
-│       ├── controllers/
-│       │   ├── ur5_controller_pandahand/ # Primary Pick & Place controller script
-│       │   └── comparison_controller/   # Supervisor HUD controller for benchmarks
-│       └── worlds/
-│           ├── my_first_simulation_pandahand.wbt # Single UR5e Pick & Place world
-│           └── pinn_vs_math.wbt                  # Comparative benchmark world (PINN vs IKPY)
-├── archive_v1_custom_arm/               # Prototype custom 3-DOF web arm project
-├── GUIDE_DES_CODES.md                   # Detailed file-by-file walkthrough (FR)
-├── DOCUMENTATION.md                     # Technical report (FR)
+ur5e-neural-kinematics/
+├── src/
+│   ├── kinematics/
+│   │   ├── ur5_pytorch_fk.py        # Differentiable PyTorch DH forward kinematics
+│   │   ├── ur5e_6dof_ik.py          # Geometric UR5e kinematics
+│   │   ├── ur5e_se3_ik.py           # SE(3) / product-of-exponentials formulation
+│   │   ├── ur5e_trajectory.py       # Quintic polynomial trajectories
+│   │   └── ikpy_ur5e_solver.py      # IKPY numerical baseline
+│   ├── models/pinn.py               # The PINN6DOF network
+│   ├── training/
+│   │   ├── train_true_pinn.py       # Main training script (hybrid loss)
+│   │   └── train_supervised_ik.py   # Supervised baseline
+│   └── control/ur5.py               # Robot driver and IK bridge
+│
+├── experiments/
+│   ├── ablation_physics_loss.py     # 2x3 ablation: is the physics term worth it?
+│   └── mesure_continuite.py         # Continuity and reach-boundary behaviour
+│
+├── webots/
+│   ├── worlds/                      # .wbt simulation files
+│   └── controllers/                 # Scenario controllers
+│
+├── checkpoints/                     # Trained weights and raw experiment results
+├── vision/                          # CNN detector (documented negative result)
+├── data/                            # Camera calibration and labels
+├── tests/test_smoke.py              # Imports, paths and a known-target check
+│
+├── CREDITS.md                       # What is inherited, what was built here
+├── GUIDE_DES_CODES.md               # File-by-file walkthrough (FR, 22 chapters)
+├── DOCUMENTATION.md                 # Technical report (FR)
 └── README.md
 ```
 
@@ -221,24 +232,24 @@ pip install -r requirements.txt
 To train the PINN model from scratch using physics-informed loss:
 
 ```bash
-python training/train_true_pinn.py
+python src/training/train_true_pinn.py
 ```
 
-The trained model checkpoint will be saved to `models/pinn_model_true_physics.pth`.
+The trained model checkpoint will be saved to `checkpoints/pinn_model_true_physics.pth`.
 
 ### 3. Running Webots 3D Simulations
 
 #### Option A: Single UR5e Pick & Place (True PINN)
 Launch Webots and open the main simulation world:
 ```
-reference_ur5_repo/simulation/worlds/my_first_simulation_pandahand.wbt
+webots/worlds/my_first_simulation_pandahand.wbt
 ```
 Press **Play** in Webots. The UR5e arm will perform top-down visual recognition, calculate the IK via the PINN network, grab the red box, and place it on the blue tray.
 
 #### Option B: Real-Time Comparative Benchmark (PINN vs Analytic Math)
 Launch Webots and open the benchmark world:
 ```
-reference_ur5_repo/simulation/worlds/pinn_vs_math.wbt
+webots/worlds/pinn_vs_math.wbt
 ```
 Press **Play** in Webots to observe two UR5e robots operating simultaneously:
 - **Red Robot (Left)**: Driven by **True PINN Neural Network**.
