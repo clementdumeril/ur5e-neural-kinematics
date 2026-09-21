@@ -9,6 +9,14 @@ An end-to-end robotic automation and inverse kinematics (IK) solver for the **Un
 
 ![UR5e Single Robot Simulation](assets/webots_single_robot.png)
 
+> **Provenance.** The Webots scene and the base of `ur5.py` (DH kinematics,
+> closed-form IK, Jacobian, quintic trajectories) come from
+> [`allan-almeida1/ur5-pick-and-place-webots`](https://github.com/allan-almeida1/ur5-pick-and-place-webots)
+> (MIT). The differentiable PyTorch forward kinematics, the neural IK and its
+> physics-informed training, the ablation, the perception rebuild and the
+> measurement methodology were developed here — see [`CREDITS.md`](CREDITS.md)
+> for the exact boundary.
+
 ---
 
 ## 📌 Key Highlights
@@ -250,7 +258,8 @@ thread, on 300 reachable targets drawn from the training workspace.
 | Mean compute time | 56.4 ms | 0.280 ms | 0.322 ms |
 | Position error at grasp point | — | exact | **0.30 mm** |
 | Differentiable | ❌ | ❌ | **✅** |
-| Continuous in the target | ❌ (8 branch flips) | ❌ (8 branch flips) | **✅** |
+| Continuity along a smooth path | tied | tied | tied — *see below* |
+| Fails loudly when out of reach | ✅ | ✅ | ❌ **silently wrong** |
 
 **Read this table honestly.** The PINN is **not** faster than the closed-form
 analytic solution — it is 11 % slower, and no neural network will beat a few
@@ -262,9 +271,44 @@ What the PINN *does* buy, and what this project demonstrates:
 - **182× faster than IKPY**, the iterative numerical solver it actually
   replaces — 0.25 ms against 45 ms;
 - **differentiable**, so it can sit inside an end-to-end learning pipeline,
-  which neither of the other two methods allows;
-- **continuous** in the target position, where analytic solvers jump between
-  their 8 solution branches.
+  which neither of the other two methods allows.
+
+That second point is now the *only* advantage this project can demonstrate. An
+earlier version of this table also claimed the network was **continuous** in the
+target where analytic solvers "jump between their 8 solution branches". That
+claim was never measured, and measuring it refuted it.
+
+### Continuity, measured
+
+`experiments/mesure_continuite.py` walks a 400-sample circle through the
+workspace and records the joint-space jump $\|q_{t+1} - q_t\|$ at every step:
+
+| Solver | Median jump | p95 | Max |
+| :-- | ---: | ---: | ---: |
+| Analytic, fixed branch | 0.0084 rad | 0.0108 | 0.0109 |
+| Analytic, first valid branch | 0.0084 rad | 0.0108 | 0.0109 |
+| Neural | 0.0084 rad | 0.0108 | 0.0109 |
+
+**Identical, and zero branch changes in 399 steps.** Probing the workspace shows
+why: with the tool orientation fixed downward, the preferred branch is valid
+*everywhere the target is reachable at all*. The branch flip this project used to
+advertise does not occur for this task.
+
+### And the comparison that does separate them goes the other way
+
+| $x$ (m) | Analytic | Neural — error of the pose returned |
+| ---: | :-- | ---: |
+| +0.40 | solution | 0.2 mm |
+| +0.50 | solution | 2.0 mm |
+| +0.55 | **exception** | 68 mm |
+| +0.60 | **exception** | 389 mm |
+| +0.70 | **exception** | **1 460 mm** |
+
+Past the reach limit the analytic solver fails loudly. The network returns six
+plausible-looking angles that are a metre and a half wrong, with no signal of any
+kind. **This is a defect, not a feature** — and any deployment would need an
+explicit reachability check in front of the network, because the network will
+never provide one.
 
 An earlier version of this table claimed 0.35–0.45 ms for the PINN against
 0.50–0.85 ms for the analytic solver. That was measured without warm-up on a
