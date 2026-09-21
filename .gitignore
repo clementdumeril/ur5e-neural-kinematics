@@ -39,4 +39,4 @@ runs/
 checkpoints/dataset_branches.npz
 
 # Modele multi-tetes : resultat d experience, non requis a l execution
-checkpoints/multihead_ik.pth
+checkpoints/multihead_K*.pth

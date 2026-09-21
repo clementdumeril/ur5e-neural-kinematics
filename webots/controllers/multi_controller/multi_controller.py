@@ -65,7 +65,7 @@ def solve_ik_technology(robot_name, target_pos, ur5_instance):
     elif "OptionB" in robot_name:
         # Option B : Lie Algebra SE3 Exponentielles
         se3_solver = UR5eSE3()
-        q_sol, _, _ = se3_solver.solve_ik_se3(target_pos, ur5_instance)
+        q_sol, _, _ = se3_solver.solve_ik_geometrique(target_pos, ur5_instance)
         tech_name = "Option B (Lie SE3 PoE)"
     else:
         # Option C : Reseau de Neurones PINN AI

@@ -64,9 +64,27 @@ class UR5eSE3:
             T = T @ exp_se3(twists[i], q[i])
         return T @ M
 
-    def solve_ik_se3(self, target_robot_xyz, ur5_instance=None):
+    def solve_ik_geometrique(self, target_robot_xyz, ur5_instance=None):
         """
-        Résout l'IK Lie SE(3) avec variations articulaires distinctes de l'Option A.
+        IK geometrique en forme fermee -- PAS une IK sur SE(3).
+
+        Le nom precedent, solve_ik_se3, etait trompeur. Cette methode ne fait
+        aucun usage de l'algebre de Lie : elle resout le triangle epaule-coude-
+        poignet par la loi des cosinus, puis FIGE le poignet a q5 = -pi/2 et
+        q6 = 0. Elle ne traite donc qu'une orientation d'outil, et ne resout pas
+        une pose SE(3) generale.
+
+        La formulation SE(3) du fichier est reelle, mais elle vit dans
+        forward_kinematics() : produit d'exponentielles T(q) = exp(xi_1 q1) ...
+        exp(xi_6 q6) M. C'est la cinematique DIRECTE.
+
+        Une vraie IK sur SE(3) serait iterative :
+
+            T_err = T(q)^-1 . T_desiree
+            V_b   = log(T_err)^v              (twist dans le repere outil)
+            dq    = J_b^+ . V_b               (ou sa version amortie)
+
+        Elle reste a ecrire ; c'est la suite naturelle de ce fichier.
         """
         x, y, z = target_robot_xyz
         q1 = np.arctan2(y, x)
@@ -95,7 +113,7 @@ class UR5eSE3:
 if __name__ == "__main__":
     solver = UR5eSE3()
     t = [0.50, 0.10, -0.13]
-    q_sol, ok, err_mm = solver.solve_ik_se3(t)
+    q_sol, ok, err_mm = solver.solve_ik_geometrique(t)
     print("=== SE(3) LIE ALGEBRA IK SOLVER TEST ===")
     print(f"Target: {t} | Success: {ok} | FK Error: {err_mm:.4f} mm")
     print(f"q_sol (deg): {[round(np.degrees(a), 1) for a in q_sol]}")

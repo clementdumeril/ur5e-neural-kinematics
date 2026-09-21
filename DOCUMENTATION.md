@@ -1,4 +1,4 @@
-# 📘 Rapport Technique et Guide d'Exportation : Projet UR5e True PINN
+# 📘 Rapport Technique et Guide d'Exportation : Projet UR5e IK neuronale informee par la physique
 
 Ce document synthétise l'ensemble du travail réalisé sur le solveur de **Cinématique Inverse 3D par Réseau de Neurones Informé par la Physique (Physics-Informed Neural Network - PINN)** appliqué au robot industriel **Universal Robots UR5e (6-DOF)** sous **Webots**.
 
@@ -13,7 +13,7 @@ Les méthodes classiques de résolution de la cinématique inverse (IK) pour les
 2. **Temps de calcul & Non-différentiabilité** : Les méthodes itératives sont coûteuses en ressources processeur et ne peuvent pas être intégrées dans des boucles d'apprentissage profond de bout en bout.
 
 **Notre Solution :**
-Un réseau de neurones artificiels profond entraîné avec une **perte hybride informée par la physique (True PINN)**. Le réseau prend directement la position cible $(X,Y,Z)$ et prédit de manière instantanée et fluide les 6 angles articulaires $(q_1, q_2, q_3, q_4, q_5, q_6)$, tout en garantissant le respect des lois géométriques réelles du robot grâce à la cinématique directe différenciable codée sous PyTorch.
+Un réseau de neurones artificiels profond entraîné avec une **perte hybride informée par la physique (IK neuronale informee par la physique)**. Le réseau prend directement la position cible $(X,Y,Z)$ et prédit de manière instantanée et fluide les 6 angles articulaires $(q_1, q_2, q_3, q_4, q_5, q_6)$, tout en garantissant le respect des lois géométriques réelles du robot grâce à la cinématique directe différenciable codée sous PyTorch.
 
 ---
 
@@ -34,7 +34,7 @@ Le système complet s'articule autour de trois composants interconnectés :
 - La caméra embarquée capture l'image de la zone de travail.
 - Le modèle de vision détecte le cube rouge et convertit ses coordonnées pixels en coordonnées 3D réelles cartésiennes $(X,Y,Z)$ par rapport à la base du robot.
 
-### Étape 2 : Inférence Cinématique (True PINN)
+### Étape 2 : Inférence Cinématique (IK neuronale informee par la physique)
 - La coordonnée $(X,Y,Z)$ est transmise au modèle `PINN6DOF` entraîné (`pinn_model_true_physics.pth`).
 - Le réseau de neurones réalise un unique passage avant (Forward Pass) en **0,25 ms** (médiane, après échauffement) et renvoie les 6 angles $(q_1, ..., q_6)$. Voir le chapitre 6 pour le détail des mesures.
 
@@ -44,7 +44,7 @@ Le système complet s'articule autour de trois composants interconnectés :
 
 ---
 
-## 🧮 3. Formulations Mathématiques du True PINN
+## 🧮 3. Formulations Mathématiques du IK neuronale informee par la physique
 
 La fonction de perte (Loss Function) utilisée pour l'entraînement du réseau combine l'apprentissage supervisé et le modèle physique du robot :
 
@@ -74,7 +74,7 @@ ur5e-neural-kinematics/
 │   ├── ur5_pytorch_fk.py                 # Cinématique directe (FK) différenciable PyTorch
 │   └── ur5e_6dof_ik.py                   # Utilitaires géométriques
 ├── training/                             # Scripts d'entraînement
-│   ├── train_true_pinn.py                # Script d'entraînement principal du True PINN
+│   ├── train_true_pinn.py                # Script d'entraînement principal du IK neuronale informee par la physique
 │   ├── pinn.py                # Générateur de dataset et architecture réseau
 │   └── train_supervised_ik.py            # Baseline d'entraînement supervisé classique
 ├──                    # Environnement Webots complet
@@ -99,15 +99,15 @@ ur5e-neural-kinematics/
 pip install torch numpy scipy ikpy matplotlib
 ```
 
-### Entraîner le Modèle True PINN
+### Entraîner le Modèle IK neuronale informee par la physique
 ```bash
 python src/training/train_true_pinn.py
 ```
 
 ### Lancer la Simulation Webots
-1. **Simulation Monoposte (Pick & Place avec True PINN)** :
+1. **Simulation Monoposte (Pick & Place avec IK neuronale informee par la physique)** :
    Ouvrir dans Webots : `webots/worlds/my_first_simulation_pandahand.wbt`
-2. **Simulation Comparative (True PINN vs IKPY Math)** :
+2. **Simulation Comparative (IK neuronale informee par la physique vs IKPY Math)** :
    Ouvrir dans Webots : `webots/worlds/pinn_vs_math.wbt`
 
 ---
@@ -117,7 +117,7 @@ python src/training/train_true_pinn.py
 Mesures sur 1000 appels chronométrés, après 200 appels d'échauffement jetés,
 un seul thread, sur 300 cibles atteignables tirées dans la zone d'entraînement.
 
-| Critère | IKPY (itératif) | Analytique en forme fermée | **True PINN** |
+| Critère | IKPY (itératif) | Analytique en forme fermée | **IK neuronale informee par la physique** |
 | :--- | ---: | ---: | ---: |
 | **Temps médian** | 45,0 ms | **0,223 ms** | 0,248 ms |
 | Temps moyen | 56,4 ms | 0,280 ms | 0,322 ms |
