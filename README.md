@@ -25,6 +25,7 @@ closed-loop Webots simulation.**
 
 - **🧠 True Physics-Informed Loss**: the predicted angles are pushed through a differentiable PyTorch Denavit–Hartenberg forward kinematics, so the gradient travels through the robot's geometry and the quantity minimised is **millimetres of end-effector error** — not similarity to a reference answer. **0.185 mm** position, **0.009°** orientation on held-out targets.
 - **🔬 The central claim is ablated, not asserted**: a 2 × 3 experiment (single IK branch vs all 8 mixed, $w_{phys} \in \{0, 1, 20\}$) measures what the physics term is actually worth. [Results below](#-does-the-physics-term-actually-help).
+- **🎭 The IK ambiguity is solved, not avoided**: a K-head network trained with a relaxed winner-take-all loss and **no branch labels at all** reaches **0.425 mm** on branch-mixed data, where a single head manages only 3.684 mm. [Results below](#-modelling-the-8-solutions-instead-of-avoiding-them).
 - **⚡ Sub-Millisecond Execution**: IK predictions in **0.25 ms** (median, warm), **182× faster than the iterative numerical solver** it replaces (IKPY, 45 ms) — and honestly reported as **11 % slower** than the closed-form analytic solution.
 - **👁️ Perception rebuilt to 1 mm**: camera-to-world localisation of the target went from **148 mm** to **~1 mm** by replacing a mis-trained CNN with a calibrated colour detector plus homography — a documented negative result on the CNN.
 - **🤖 Vision & Actuation Integration**: end-to-end pick-and-place with the Franka Emika PandaHand in Webots, closed-loop on joint position.
@@ -166,6 +167,84 @@ python experiments/ablation_physics_loss.py     # ~1 h on CPU, writes checkpoint
 
 ---
 
+## 🎭 Modelling the 8 solutions instead of avoiding them
+
+The ablation above measured a **structural** failure, not a tuning problem. A
+network is a *function*: it returns one value per input. The average of two
+valid joint configurations is a solution to neither — hence the 911 mm.
+
+This repository sidesteps that by forcing one solution family in the dataset
+generator. That is sound engineering, but it *avoids* the problem rather than
+solving it. `src/models/multihead.py` takes it head-on:
+
+```
+                      ┌─ head 1 ─> q⁽¹⁾
+(x,y,z) ─> trunk ─────┼─ head 2 ─> q⁽²⁾
+                      ├─  ...
+                      └─ head K ─> q⁽ᴷ⁾
+```
+
+with a loss that keeps only the best proposal — a *relaxed* winner-take-all, so
+that losing heads keep a small share of the gradient and do not die:
+
+$$\mathcal{L} = \min_k \; \mathcal{L}_{phys}ig(q^{(k)}ig)$$
+
+**The loss is purely physical: no branch labels are provided anywhere.** Nothing
+tells the network which head should learn which branch. Any structure it
+develops, it discovers on its own.
+
+### Result
+
+Same 20 201 targets, same seed, same schedule as the ablation.
+
+| Training | Position | Orientation | Latency | Branch chosen by hand? |
+| :-- | ---: | ---: | ---: | :-: |
+| Single head, **single branch** | **0.187 mm** | **0.011°** | **0.248 ms** | yes |
+| Single head, mixed branches ($w_{phys}=20$) | 3.684 mm | 71.6° | 0.248 ms | no |
+| **8 heads, mixed branches** | **0.425 mm** | 0.415° | 4.84 ms | **no** |
+
+**The formulation works.** Given the same unlabelled, branch-mixed data on which
+a single head reaches 3.684 mm with an unusable 71.6° of orientation error, the
+multi-head network reaches **0.425 mm and 0.415°** — 8.7× better in position,
+170× better in orientation, with no supervision about branches at all.
+
+*Best-of-K is a deployable metric, not a cheat:* at inference you run the
+forward kinematics on all K outputs and keep the closest. That selection is
+what the 4.84 ms figure includes.
+
+### Three honest caveats
+
+**It does not beat the engineering shortcut.** Against the hand-picked single
+branch it is 2.3× worse in position, 38× worse in orientation, and 19.5× slower.
+For *this* task — one tool orientation, top-down grasping — forcing a branch in
+the generator remains the better choice, and the repository still ships that.
+
+**Only 2 distinct branches are covered, not 8.** That is not head collapse: the
+workspace genuinely offers only **2.71 valid branches per target on average**
+once the tool orientation is fixed downward. K = 8 is over-provisioned, six heads
+are redundant, and two of them (heads 1 and 4) drift between branches at ~37 %
+consistency. A smaller K would likely do as well — that is the next experiment,
+not a claim.
+
+**Winner-take-all converges noisily.** Validation error oscillates (22.6 → 28.7 →
+1.04 → 1.61 → … → 0.425 mm) because the winner assignment keeps changing, which
+makes the objective non-stationary. The saved checkpoint is the best epoch, not
+the last.
+
+### Where this would actually pay off
+
+Not here. It pays off the moment you *cannot* pick a branch in advance: multiple
+tool orientations, obstacle avoidance that needs an elbow-down route, or full
+SE(3) pose IK where the valid branch depends on the requested orientation. The
+value of this experiment is that it shows the ambiguity is **solvable**, and
+quantifies exactly what solving it costs.
+
+```bash
+python experiments/multihypothesis_ik.py     # ~55 min on CPU (11 min of it dataset generation, cached)
+```
+
+---
+
 ## 📂 Project Directory Structure
 
 ```
@@ -177,7 +256,9 @@ ur5e-neural-kinematics/
 │   │   ├── ur5e_se3_ik.py           # SE(3) / product-of-exponentials formulation
 │   │   ├── ur5e_trajectory.py       # Quintic polynomial trajectories
 │   │   └── ikpy_ur5e_solver.py      # IKPY numerical baseline
-│   ├── models/pinn.py               # The PINN6DOF network
+│   ├── models/
+│   │   ├── pinn.py                  # The PINN6DOF network
+│   │   └── multihead.py             # K-head network + relaxed winner-take-all loss
 │   ├── training/
 │   │   ├── train_true_pinn.py       # Main training script (hybrid loss)
 │   │   └── train_supervised_ik.py   # Supervised baseline
@@ -185,6 +266,7 @@ ur5e-neural-kinematics/
 │
 ├── experiments/
 │   ├── ablation_physics_loss.py     # 2x3 ablation: is the physics term worth it?
+│   ├── multihypothesis_ik.py        # Can K heads discover the 8 IK branches?
 │   └── mesure_continuite.py         # Continuity and reach-boundary behaviour
 │
 ├── webots/

@@ -34,3 +34,9 @@ archive_v1_custom_arm/webots/worlds/.*.wbproj
 # --- Logs et sorties d'entraînement ---
 *.log
 runs/
+
+# Cache du jeu de donnees multi-branches (regenerable en ~11 min)
+checkpoints/dataset_branches.npz
+
+# Modele multi-tetes : resultat d experience, non requis a l execution
+checkpoints/multihead_ik.pth

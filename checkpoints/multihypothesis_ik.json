@@ -1,0 +1,7 @@
+{
+  "n_heads": 8,
+  "epoques": 100,
+  "n_cibles": 20201,
+  "best_of_k_mm": 0.42467121966183186,
+  "branches_couvertes": 2
+}

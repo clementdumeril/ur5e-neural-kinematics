@@ -71,7 +71,8 @@ ur5e-neural-kinematics/
 │   │   └── ur5e.urdf             ← description du robot (pour IKPY)
 │   │
 │   ├── models/
-│   │   └── pinn.py               ← architecture du réseau (PINN6DOF)
+│   │   ├── pinn.py               ← architecture du réseau (PINN6DOF)
+│   │   └── multihead.py          ← réseau à K têtes + perte winner-take-all
 │   │
 │   ├── training/                 ← 🧠 ENTRAÎNEMENT
 │   │   ├── train_true_pinn.py    ← ⭐ script principal (perte hybride)
@@ -82,6 +83,7 @@ ur5e-neural-kinematics/
 │
 ├── experiments/                  ← 🔬 CE QUI MESURE LES AFFIRMATIONS
 │   ├── ablation_physics_loss.py  ← la perte physique sert-elle ? (plan 2×3)
+│   ├── multihypothesis_ik.py     ← K têtes peuvent-elles trouver les branches ?
 │   └── mesure_continuite.py      ← continuité et bord de l'espace atteignable
 │
 ├── webots/                       ← 🤖 ENVIRONNEMENT DE SIMULATION
@@ -1848,3 +1850,135 @@ python experiments/ablation_physics_loss.py
 
 Environ 1 h sur CPU (11 min de génération, 6 entraînements). Les résultats bruts
 sont écrits dans `checkpoints/ablation_physics_loss.json`.
+
+---
+
+## 23. 🎭 L'IK multi-hypothèses : modéliser les 8 branches au lieu de les éviter
+
+### 23.1 Le problème, reformulé
+
+Le chapitre 22 a mesuré un échec **structurel**, et c'est ce mot qui compte.
+
+Un réseau de neurones est une **fonction** : il rend une valeur par entrée. Or
+une position peut avoir jusqu'à 8 configurations articulaires valides. Demander
+à une fonction de représenter une relation multivaluée, c'est lui demander
+l'impossible — elle produit la moyenne, qui n'est solution d'**aucune** branche.
+D'où les 911 mm.
+
+Le dépôt s'en sort en imposant `wrist='up', shoulder='left', elbow='up'` dans le
+générateur. C'est le bon choix d'ingénieur. Mais il **évite** le problème.
+
+### 23.2 L'architecture
+
+[src/models/multihead.py](src/models/multihead.py) — un tronc partagé, K têtes :
+
+```
+                      ┌─ tête 1 ─> q⁽¹⁾
+(x,y,z) ─> tronc ─────┼─ tête 2 ─> q⁽²⁾
+                      ├─  ...
+                      └─ tête K ─> q⁽ᴷ⁾
+```
+
+Tronc : `3 → 512 → 512 → 512`, SiLU. Chaque tête : `512 → 256 → 6`.
+**1 590 320 paramètres** pour K = 8.
+
+Et la perte ne retient que la meilleure proposition :
+
+$$\mathcal{L} = \min_k \mathcal{L}_{phys}\big(q^{(k)}\big)$$
+
+Une relation multivaluée redevient représentable : chaque tête est libre de se
+spécialiser, et aucune n'est pénalisée pour ne pas couvrir les autres.
+
+### 23.3 Les deux décisions qui font marcher la chose
+
+**Le min est relâché.** Avec un `min` strict, la tête qui gagne tôt reçoit tout
+le gradient et les autres ne s'entraînent jamais — c'est l'effondrement des
+têtes, le piège classique de cette famille de méthodes. La gagnante reçoit donc
+le poids `1 − ε`, les K−1 autres se partagent `ε` (ε = 0,05) :
+
+```python
+poids = torch.full_like(err, eps / (K - 1))
+poids[torch.arange(B), gagnante] = 1.0 - eps
+return (poids * err).sum(1).mean()
+```
+
+**La perte est purement physique.** Aucun terme ne compare les angles à une
+référence. **Aucune étiquette de branche n'entre dans l'entraînement.** Rien
+n'indique au réseau quelle tête doit apprendre quelle branche : toute structure
+qu'il développe, il l'a trouvée seul. C'est ce qui rend le résultat intéressant.
+
+### 23.4 Le résultat
+
+Mêmes 20 201 cibles, même graine, même planning que l'ablation.
+
+| Entraînement | Position | Orientation | Latence | Branche choisie à la main ? |
+| :-- | ---: | ---: | ---: | :-: |
+| 1 tête, branche unique | **0,187 mm** | **0,011°** | **0,248 ms** | oui |
+| 1 tête, branches mélangées (`w=20`) | 3,684 mm | 71,6° | 0,248 ms | non |
+| **8 têtes, branches mélangées** | **0,425 mm** | 0,415° | 4,84 ms | **non** |
+
+**La formulation fonctionne.** Sur exactement les mêmes données non étiquetées
+où une tête unique plafonne à 3,684 mm avec 71,6° d'orientation — inutilisable
+pour saisir — le multi-têtes atteint **0,425 mm et 0,415°**. Soit **8,7× mieux
+en position et 170× mieux en orientation**, sans la moindre supervision sur les
+branches.
+
+> **Le best-of-K n'est pas une triche.** À l'inférence on passe les K sorties
+> dans la cinématique directe et on garde la plus proche. Cette sélection est
+> incluse dans les 4,84 ms mesurées.
+
+### 23.5 Trois réserves, et elles comptent
+
+**1. Ça ne bat pas le raccourci d'ingénieur.** Face à la branche choisie à la
+main : 2,3× pire en position, 38× pire en orientation, 19,5× plus lent. Pour
+**cette** tâche — une seule orientation d'outil, saisie par le dessus — forcer
+la branche dans le générateur reste le meilleur choix, et c'est ce que le dépôt
+continue de livrer.
+
+**2. Seulement 2 branches distinctes couvertes, pas 8.** Et ce n'est pas un
+effondrement des têtes : l'espace de travail n'offre réellement que **2,71
+branches valides par cible en moyenne** une fois l'orientation figée vers le
+bas. K = 8 est surdimensionné, six têtes sont redondantes, et deux d'entre elles
+(les têtes 1 et 4) oscillent entre branches à ~37 % de constance. Un K plus
+petit ferait probablement aussi bien — c'est l'expérience suivante, pas une
+affirmation.
+
+Cette observation recoupe la sonde du chapitre 22 : le long d'un rayon, il y
+avait toujours exactement 2 branches valides, puis zéro au-delà de la limite
+d'atteignabilité. Il n'y a jamais eu 8 branches à trouver ici.
+
+**3. Le winner-take-all converge bruyamment.** L'erreur de validation oscille :
+
+```
+ep 001   22,558 mm      ep 050    0,694 mm
+ep 010   28,729 mm      ep 070    0,472 mm
+ep 020    1,042 mm      ep 090    0,445 mm
+ep 030    1,608 mm      ep 100    0,425 mm
+```
+
+parce que l'attribution des gagnantes change d'une époque à l'autre : l'objectif
+est non stationnaire. Le modèle enregistré est la meilleure époque, pas la
+dernière.
+
+### 23.6 Où cela paierait vraiment
+
+Pas ici. Cela paie à l'instant où l'on ne **peut pas** choisir la branche à
+l'avance :
+
+- plusieurs orientations d'outil ;
+- évitement d'obstacle exigeant un passage par le coude bas ;
+- IK de pose SE(3) complète, où la branche valide dépend de l'orientation
+  demandée.
+
+L'intérêt de cette expérience est d'avoir montré que l'ambiguïté est
+**soluble**, et d'avoir chiffré exactement ce que la résoudre coûte.
+
+### 23.7 Rejouer
+
+```bash
+python experiments/multihypothesis_ik.py
+```
+
+Environ 55 minutes sur CPU, dont 11 de génération du jeu de données — mis en
+cache dans `checkpoints/dataset_branches.npz`, donc les relances suivantes
+démarrent directement sur l'entraînement.
