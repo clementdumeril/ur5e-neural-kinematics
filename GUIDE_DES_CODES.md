@@ -87,6 +87,8 @@ ur5e-neural-kinematics/
 │   ├── ablation_physics_loss.py  ← la perte physique sert-elle ? (plan 2×3)
 │   ├── multihypothesis_ik.py     ← K têtes peuvent-elles trouver les branches ?
 │   ├── benchmark_solveurs.py     ← les cinq solveurs, chronométrés
+│   ├── heatmap_erreur.py         ← où l'erreur vit dans l'espace de travail
+│   ├── figures.py                ← régénère les figures depuis les résultats
 │   └── mesure_continuite.py      ← continuité et bord de l'espace atteignable
 │
 ├── webots/                       ← 🤖 ENVIRONNEMENT DE SIMULATION

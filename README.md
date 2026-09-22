@@ -438,6 +438,15 @@ is open work.
 
 ## Limitations
 
+![Workspace error map](assets/fig_workspace_error.png)
+
+The map above puts three separate findings on one image: sub-millimetre accuracy
+inside the training box, an **81× degradation** the moment you leave it
+(0.176 mm against 14.3 mm median), and the fact that past the reachability limit
+the network keeps returning six plausible angles — up to **1.78 m** wrong —
+without ever signalling that it has left its domain.
+
+
 | Limitation | Evidence |
 | :-- | :-- |
 | **Extrapolates poorly outside the training box.** Above the drop-off tray ($x = -0.20$, outside the learned $[0, 0.4]$), error rises to 7–11 mm. | `mesurer_erreur_pinn()`, four scenario waypoints |
@@ -502,6 +511,9 @@ python src/training/train_true_pinn.py          # retrain the network           
 python experiments/ablation_physics_loss.py     # what the physics term is worth   (~1 h)
 python experiments/multihypothesis_ik.py        # multi-valued IK                  (~55 min)
 python experiments/mesure_continuite.py         # continuity and reach boundary    (~1 min)
+python experiments/benchmark_solveurs.py        # all five solvers, timed          (~4 min)
+python experiments/heatmap_erreur.py            # workspace error map              (~3 min)
+python experiments/figures.py                   # regenerate figures from results  (instant)
 ```
 
 <details>
@@ -548,7 +560,8 @@ ur5e-neural-kinematics/
 │   ├── training/                # physics-informed and supervised training scripts
 │   └── control/ur5.py           # robot driver, IK bridge, perception
 │
-├── experiments/                 # ablation, multi-hypothesis IK, continuity, solver benchmark
+├── experiments/                 # ablation, multi-hypothesis IK, continuity,
+│                                # solver benchmark, error map, figure generation
 ├── webots/                      # worlds and scenario controllers
 ├── checkpoints/                 # trained weights and raw experiment results
 ├── vision/  data/               # CNN detector (negative result), camera calibration
