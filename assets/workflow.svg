@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 780" width="1180" height="780" font-family="Helvetica, Arial, sans-serif">
+
+  <rect x="0" y="0" width="1180" height="780" fill="#ffffff"/>
+
+  <!-- ============================ TRAINING ============================ -->
+  <text x="40" y="46" font-size="21" font-weight="bold" fill="#111827">TRAINING</text>
+  <text x="148" y="46" font-size="16" fill="#6b7280">— the gradient travels through the robot's geometry</text>
+  <line x1="40" y1="58" x2="1140" y2="58" stroke="#111827" stroke-width="1.5"/>
+
+  <!-- target -->
+  <rect x="40" y="120" width="150" height="62" rx="6" fill="#ffffff" stroke="#111827" stroke-width="2"/>
+  <text x="115" y="146" font-size="15" fill="#111827" text-anchor="middle">Target pose</text>
+  <text x="115" y="168" font-size="14" fill="#6b7280" text-anchor="middle">x*, y*, z*</text>
+
+  <line x1="190" y1="151" x2="242" y2="151" stroke="#111827" stroke-width="2"/>
+  <polygon points="252,151 240,146 240,156" fill="#111827"/>
+
+  <!-- network -->
+  <rect x="254" y="112" width="152" height="78" rx="6" fill="#ffffff" stroke="#111827" stroke-width="2"/>
+  <text x="330" y="140" font-size="15" font-weight="bold" fill="#111827" text-anchor="middle">Neural net</text>
+  <text x="330" y="161" font-size="13" fill="#6b7280" text-anchor="middle">3 → 512×3 → 6</text>
+  <text x="330" y="179" font-size="13" fill="#6b7280" text-anchor="middle">SiLU</text>
+
+  <line x1="406" y1="151" x2="458" y2="151" stroke="#111827" stroke-width="2"/>
+  <polygon points="468,151 456,146 456,156" fill="#111827"/>
+
+  <!-- predicted angles -->
+  <rect x="470" y="120" width="132" height="62" rx="6" fill="#ffffff" stroke="#111827" stroke-width="2"/>
+  <text x="536" y="146" font-size="15" fill="#111827" text-anchor="middle">Joint angles</text>
+  <text x="536" y="168" font-size="14" fill="#6b7280" text-anchor="middle">q̂ ∈ ℝ⁶</text>
+
+  <line x1="602" y1="151" x2="654" y2="151" stroke="#2563eb" stroke-width="2.5"/>
+  <polygon points="664,151 652,146 652,156" fill="#2563eb"/>
+
+  <!-- differentiable FK : the contribution -->
+  <rect x="666" y="104" width="214" height="94" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="3"/>
+  <text x="773" y="132" font-size="15" font-weight="bold" fill="#1e40af" text-anchor="middle">Differentiable FK</text>
+  <text x="773" y="154" font-size="13" fill="#1e40af" text-anchor="middle">Denavit–Hartenberg,</text>
+  <text x="773" y="172" font-size="13" fill="#1e40af" text-anchor="middle">rewritten in PyTorch</text>
+  <text x="773" y="190" font-size="12" fill="#3b82f6" text-anchor="middle">p̂, R̂ = FK(q̂)</text>
+
+  <line x1="880" y1="151" x2="932" y2="151" stroke="#2563eb" stroke-width="2.5"/>
+  <polygon points="942,151 930,146 930,156" fill="#2563eb"/>
+
+  <!-- loss -->
+  <rect x="944" y="112" width="196" height="78" rx="6" fill="#ffffff" stroke="#111827" stroke-width="2"/>
+  <text x="1042" y="138" font-size="15" font-weight="bold" fill="#111827" text-anchor="middle">Loss, in millimetres</text>
+  <text x="1042" y="160" font-size="13" fill="#6b7280" text-anchor="middle">‖p̂ − p*‖² + r²‖R̂ − R*‖²</text>
+  <text x="1042" y="180" font-size="12" fill="#9ca3af" text-anchor="middle">+ 0.1 · branch anchor</text>
+
+  <!-- backprop -->
+  <path d="M 1042 190 L 1042 246 L 330 246 L 330 190" fill="none" stroke="#2563eb"
+        stroke-width="2.5" stroke-dasharray="7 5"/>
+  <polygon points="330,180 324,192 336,192" fill="#2563eb"/>
+  <text x="686" y="268" font-size="14" fill="#2563eb" text-anchor="middle">backpropagation — through the kinematics, not around it</text>
+
+  <!-- the point -->
+  <rect x="40" y="298" width="1100" height="62" rx="6" fill="#f9fafb" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="62" y="323" font-size="14" fill="#374151">A supervised network is told <tspan font-style="italic">“resemble these reference angles”</tspan>. This one is told <tspan font-weight="bold">“your hand landed 3 mm from the target”</tspan> —</text>
+  <text x="62" y="345" font-size="14" fill="#374151">because the prediction passes through the robot's geometry before the error is computed. That is the whole of <tspan font-weight="bold">physics-informed</tspan> here.</text>
+
+  <!-- ============================ DEPLOYMENT ============================ -->
+  <text x="40" y="430" font-size="21" font-weight="bold" fill="#111827">DEPLOYMENT</text>
+  <text x="186" y="430" font-size="16" fill="#6b7280">— closed loop in Webots, 0.54 ms per solve</text>
+  <line x1="40" y1="442" x2="1140" y2="442" stroke="#111827" stroke-width="1.5"/>
+
+  <!-- perception row -->
+  <text x="40" y="484" font-size="13" font-weight="bold" fill="#6b7280">PERCEPTION</text>
+  <rect x="40" y="496" width="132" height="58" rx="6" fill="#ffffff" stroke="#111827" stroke-width="2"/>
+  <text x="106" y="521" font-size="14" fill="#111827" text-anchor="middle">Camera</text>
+  <text x="106" y="540" font-size="12" fill="#6b7280" text-anchor="middle">512×512, top-down</text>
+
+  <line x1="172" y1="525" x2="200" y2="525" stroke="#111827" stroke-width="2"/>
+  <polygon points="210,525 198,520 198,530" fill="#111827"/>
+
+  <rect x="212" y="496" width="140" height="58" rx="6" fill="#ffffff" stroke="#111827" stroke-width="2"/>
+  <text x="282" y="521" font-size="14" fill="#111827" text-anchor="middle">Colour threshold</text>
+  <text x="282" y="540" font-size="12" fill="#6b7280" text-anchor="middle">+ centroid</text>
+
+  <line x1="352" y1="525" x2="380" y2="525" stroke="#111827" stroke-width="2"/>
+  <polygon points="390,525 378,520 378,530" fill="#111827"/>
+
+  <rect x="392" y="496" width="140" height="58" rx="6" fill="#ffffff" stroke="#111827" stroke-width="2"/>
+  <text x="462" y="521" font-size="14" fill="#111827" text-anchor="middle">Homography</text>
+  <text x="462" y="540" font-size="12" fill="#6b7280" text-anchor="middle">1.1 mm residual</text>
+
+  <line x1="532" y1="525" x2="560" y2="525" stroke="#111827" stroke-width="2"/>
+  <polygon points="570,525 558,520 558,530" fill="#111827"/>
+
+  <!-- resolution -->
+  <text x="572" y="484" font-size="13" font-weight="bold" fill="#2563eb">RESOLUTION</text>
+  <rect x="572" y="496" width="150" height="58" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="3"/>
+  <text x="647" y="521" font-size="14" font-weight="bold" fill="#1e40af" text-anchor="middle">Trained network</text>
+  <text x="647" y="540" font-size="12" fill="#1e40af" text-anchor="middle">q₁ … q₆</text>
+
+  <line x1="722" y1="525" x2="750" y2="525" stroke="#111827" stroke-width="2"/>
+  <polygon points="760,525 748,520 748,530" fill="#111827"/>
+
+  <!-- actuation -->
+  <text x="762" y="484" font-size="13" font-weight="bold" fill="#6b7280">ACTUATION</text>
+  <rect x="762" y="496" width="150" height="58" rx="6" fill="#ffffff" stroke="#111827" stroke-width="2"/>
+  <text x="837" y="521" font-size="14" fill="#111827" text-anchor="middle">Quintic trajectory</text>
+  <text x="837" y="540" font-size="12" fill="#6b7280" text-anchor="middle">closed loop on q</text>
+
+  <line x1="912" y1="525" x2="940" y2="525" stroke="#111827" stroke-width="2"/>
+  <polygon points="950,525 938,520 938,530" fill="#111827"/>
+
+  <rect x="952" y="496" width="188" height="58" rx="6" fill="#ffffff" stroke="#111827" stroke-width="2"/>
+  <text x="1046" y="521" font-size="14" font-weight="bold" fill="#111827" text-anchor="middle">UR5e — pick &amp; place</text>
+  <text x="1046" y="540" font-size="12" fill="#6b7280" text-anchor="middle">0.30 mm at the grasp</text>
+
+  <!-- headline numbers -->
+  <line x1="40" y1="606" x2="1140" y2="606" stroke="#e5e7eb" stroke-width="1.5"/>
+
+  <text x="180" y="662" font-size="34" font-weight="bold" fill="#111827" text-anchor="middle">0.185 mm</text>
+  <text x="180" y="688" font-size="14" fill="#6b7280" text-anchor="middle">validation error</text>
+  <text x="180" y="708" font-size="12" fill="#9ca3af" text-anchor="middle">2 002 held-out targets</text>
+
+  <line x1="360" y1="636" x2="360" y2="712" stroke="#e5e7eb" stroke-width="1.5"/>
+
+  <text x="500" y="662" font-size="34" font-weight="bold" fill="#111827" text-anchor="middle">0.30 mm</text>
+  <text x="500" y="688" font-size="14" fill="#6b7280" text-anchor="middle">measured in Webots</text>
+  <text x="500" y="708" font-size="12" fill="#9ca3af" text-anchor="middle">poses actually reached</text>
+
+  <line x1="680" y1="636" x2="680" y2="712" stroke="#e5e7eb" stroke-width="1.5"/>
+
+  <text x="820" y="662" font-size="34" font-weight="bold" fill="#111827" text-anchor="middle">0.543 ms</text>
+  <text x="820" y="688" font-size="14" fill="#6b7280" text-anchor="middle">per solve</text>
+  <text x="820" y="708" font-size="12" fill="#9ca3af" text-anchor="middle">end to end, warm</text>
+
+  <line x1="1000" y1="636" x2="1000" y2="712" stroke="#e5e7eb" stroke-width="1.5"/>
+
+  <text x="1070" y="662" font-size="34" font-weight="bold" fill="#2563eb" text-anchor="middle">21 %</text>
+  <text x="1070" y="688" font-size="14" fill="#6b7280" text-anchor="middle">what physics buys</text>
+  <text x="1070" y="708" font-size="12" fill="#9ca3af" text-anchor="middle">measured by ablation</text>
+
+</svg>

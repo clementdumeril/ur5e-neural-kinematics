@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 512" width="900" height="512" font-family="Helvetica, Arial, sans-serif"><rect x="0" y="0" width="900" height="512" fill="#ffffff"/>
+<text x="40" y="44" font-size="19" fill="#111827" text-anchor="start" font-weight="bold">Inverse-kinematics solve time</text>
+<text x="40" y="68" font-size="13" fill="#6b7280" text-anchor="start">Median of 200 calls after 200 warm-up calls, single thread. Logarithmic scale.</text>
+<text x="232" y="131" font-size="14" fill="#111827" text-anchor="end">Closed-form analytic</text>
+<rect x="250" y="112" width="47.6" height="32" rx="3" fill="#d1d5db"/>
+<text x="309.598553574104" y="134" font-size="14" fill="#6b7280" text-anchor="start">0.232 ms</text>
+<text x="232" y="183" font-size="14" fill="#111827" text-anchor="end" font-weight="bold">Neural, single output</text>
+<rect x="250" y="164" width="95.5" height="32" rx="3" fill="#2563eb"/>
+<text x="357.5447693238816" y="186" font-size="14" fill="#111827" text-anchor="start" font-weight="bold">0.543 ms</text>
+<text x="232" y="235" font-size="14" fill="#111827" text-anchor="end" font-weight="bold">Neural, 2 heads</text>
+<rect x="250" y="216" width="219.8" height="32" rx="3" fill="#2563eb"/>
+<text x="481.848067184885" y="238" font-size="14" fill="#111827" text-anchor="start" font-weight="bold">4.911 ms</text>
+<text x="232" y="287" font-size="14" fill="#111827" text-anchor="end">IKPY (iterative) *</text>
+<rect x="250" y="268" width="321.3" height="32" rx="3" fill="#d1d5db"/>
+<text x="583.3260674218931" y="290" font-size="14" fill="#6b7280" text-anchor="start">29.6 ms</text>
+<text x="232" y="339" font-size="14" fill="#111827" text-anchor="end">Damped least squares</text>
+<rect x="250" y="320" width="407.3" height="32" rx="3" fill="#d1d5db"/>
+<text x="669.2950105907186" y="342" font-size="14" fill="#6b7280" text-anchor="start">135.8 ms</text>
+<text x="232" y="391" font-size="14" fill="#111827" text-anchor="end">DLS, 8 restarts</text>
+<rect x="250" y="372" width="449.6" height="32" rx="3" fill="#d1d5db"/>
+<text x="711.5974642307644" y="394" font-size="14" fill="#6b7280" text-anchor="start">287.4 ms</text>
+<line x1="250.0" y1="96" x2="250.0" y2="420" stroke="#e5e7eb" stroke-width="1"/>
+<text x="250.0" y="438" font-size="11" fill="#9ca3af" text-anchor="middle">0.1 ms</text>
+<line x1="380.0" y1="96" x2="380.0" y2="420" stroke="#e5e7eb" stroke-width="1"/>
+<text x="380.0" y="438" font-size="11" fill="#9ca3af" text-anchor="middle">1 ms</text>
+<line x1="510.0" y1="96" x2="510.0" y2="420" stroke="#e5e7eb" stroke-width="1"/>
+<text x="510.0" y="438" font-size="11" fill="#9ca3af" text-anchor="middle">10 ms</text>
+<line x1="640.0" y1="96" x2="640.0" y2="420" stroke="#e5e7eb" stroke-width="1"/>
+<text x="640.0" y="438" font-size="11" fill="#9ca3af" text-anchor="middle">100 ms</text>
+<line x1="770.0" y1="96" x2="770.0" y2="420" stroke="#e5e7eb" stroke-width="1"/>
+<text x="770.0" y="438" font-size="11" fill="#9ca3af" text-anchor="middle">1000 ms</text>
+<text x="40" y="466" font-size="12" fill="#6b7280" text-anchor="start">The network is not faster than the closed form. It is faster than generic iterative solvers, and it is the only differentiable one.</text>
+<text x="40" y="484" font-size="11" fill="#9ca3af" text-anchor="start">* IKPY is measured in the URDF frame, which does not coincide with this project's DH table; only the timing is comparable.</text>
+</svg>

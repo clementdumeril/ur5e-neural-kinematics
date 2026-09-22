@@ -9,34 +9,30 @@ closed-loop Webots simulation.**
 [![Webots R2023a+](https://img.shields.io/badge/webots-R2023a+-green.svg)](https://cyberbotics.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+![System architecture](assets/workflow.svg)
+
+<!-- Remplacer l'image ci-dessous par un GIF de 6 a 10 s : cube detecte,
+     approche, saisie, transport, depose, retour. Voir GUIDE_DES_CODES.md ch. 25. -->
 ![UR5e pick and place in Webots](assets/webots_single_robot.png)
 
 ---
 
 ## Results at a glance
 
-| | Measured | How |
-| :-- | ---: | :-- |
-| IK accuracy, validation | **0.185 mm** / 0.009° | 2 002 held-out targets |
-| IK accuracy, in simulation | **0.30 mm** | poses actually reached in Webots |
-| Inference time, end to end | **0.543 ms** | 200 calls, 200 warm-up discarded |
-| — against a generic iterative solver | **~55× faster** | IKPY, 29.6 ms |
-| — against the closed-form solver | **2.3× slower** | 0.232 ms — reported, not hidden |
-| Target localisation from camera | **~1 mm** | rebuilt from 148 mm |
-| What the physics term is worth | **21 %** | measured by ablation, not asserted |
-| Jacobian, against finite differences | **3.2 × 10⁻¹⁰** | 200 random configurations |
-| Multi-valued IK, no branch labels | **0.314 mm** | vs 3.684 mm for a single-output network |
+| Metric | Result |
+| :-- | ---: |
+| Neural IK validation error | **0.185 mm / 0.009°** |
+| Closed-loop error measured in Webots | **0.30 mm** |
+| Inference, end to end | **0.543 ms** |
+| Against a generic iterative solver | **~55× faster** |
 
-Three claims that appeared in earlier versions of this file were **measured and
-removed**: a speed advantage over the closed-form solver, a continuity advantage
-over analytic solvers, and the assertion that a supervised network "averages the
-8 IK solutions". Each is documented below with the experiment that refuted it.
+The full benchmark, the ablation that quantifies the physics term, and the
+claims this project measured and then withdrew are below.
 
 ---
 
 ## Contents
 
-- [Quickstart](#quickstart)
 - [How it works](#how-it-works)
 - [The physics-informed loss](#the-physics-informed-loss)
 - [Experiment 1 — What is the physics term actually worth?](#experiment-1--what-is-the-physics-term-actually-worth)
@@ -45,66 +41,10 @@ over analytic solvers, and the assertion that a supervised network "averages the
 - [Kinematics from first principles](#kinematics-from-first-principles)
 - [Benchmarks](#benchmarks)
 - [Limitations](#limitations)
-- [How the numbers were obtained](#how-the-numbers-were-obtained)
+- [Experimental validation, and negative results](#experimental-validation-and-negative-results)
+- [Quickstart](#quickstart)
 - [Repository layout](#repository-layout)
 - [Provenance](#provenance)
-
----
-
-## Quickstart
-
-```bash
-git clone https://github.com/clementdumeril/ur5e-neural-kinematics.git
-cd ur5e-neural-kinematics
-pip install -r requirements.txt
-```
-
-**Also required:** Webots R2023a or later (tested on R2025a), and an internet
-connection on first launch — the worlds pull their `UR5e`, `PandaHand` and
-`Table` PROTO definitions from GitHub via `EXTERNPROTO`.
-
-**Run the demo.** Open `webots/worlds/my_first_simulation_pandahand.wbt` and
-press Play. The arm reads the cube position from its camera, solves the IK with
-the network, grasps the cube and transfers it to the tray.
-
-**Reproduce the results.**
-
-```bash
-python tests/test_smoke.py                      # imports, paths, a known target   (seconds)
-python src/training/train_true_pinn.py          # retrain the network              (~8 min)
-python experiments/ablation_physics_loss.py     # what the physics term is worth   (~1 h)
-python experiments/multihypothesis_ik.py        # multi-valued IK                  (~55 min)
-python experiments/mesure_continuite.py         # continuity and reach boundary    (~1 min)
-```
-
-<details>
-<summary><b>If Webots uses the wrong Python interpreter</b></summary>
-
-The controllers use whichever `python` is on your `PATH`. If that interpreter
-lacks the dependencies, add a `COMMAND` line to `webots/controllers/*/runtime.ini`:
-
-```ini
-[python]
-COMMAND = C:/path/to/your/python.exe
-```
-
-Webots does **not** support `#` comments in `runtime.ini` — it reads them as
-unknown keys and warns about each one.
-</details>
-
-<details>
-<summary><b>On the vision model, and why you do not need it</b></summary>
-
-The CNN weights (`vision/vgg16.h5`, 37 MB) are not tracked. The default
-perception mode is `VISION_MODE = "color"`, a colour-threshold detector that
-needs no model and is **more accurate than the CNN**: 8 mm against 49 mm on the
-same 200 validation images. The CNN is kept as a documented negative result.
-Without TensorFlow installed, the simulation stays in colour mode and runs end
-to end.
-
-`data/calibration.json` **is** included — it holds the camera pose and the
-pixel-to-world homography, without which the colour detector cannot work.
-</details>
 
 ---
 
@@ -223,6 +163,8 @@ model never improves past its first epoch. At $w_p = 20$ it reaches 3.68 mm — 
 model and with 71.6° of orientation error, unusable for grasping.
 
 ---
+
+![Physics term ablation](assets/fig_ablation.svg)
 
 ## Experiment 2 — Modelling the IK branches instead of avoiding them
 
@@ -459,6 +401,8 @@ closed-form solver buys, and what a generic method costs when you do not have on
 
 ## Benchmarks
 
+![Solver benchmark](assets/fig_benchmark.svg)
+
 Reproduced by [`experiments/benchmark_solveurs.py`](experiments/benchmark_solveurs.py).
 200 targets, 200 warm-up calls discarded, single thread. Timings are measured at
 the call site — including the NumPy-to-tensor conversion the caller actually pays.
@@ -505,10 +449,15 @@ is open work.
 
 ---
 
-## How the numbers were obtained
+## Experimental validation, and negative results
 
-Several figures in this repository replaced earlier ones that were wrong. The
-method that caught them is worth more than any single result.
+Three claims that appeared in earlier versions of this README were **measured
+and withdrawn**: a speed advantage over the closed-form solver, a continuity
+advantage over analytic solvers, and the assertion that a supervised network
+"averages the 8 IK solutions". Each was replaced by the experiment that refuted
+it — Experiments 1 and 3, and the benchmark.
+
+The method that caught them is worth more than any single result.
 
 - **Every timing discards 200 warm-up calls** and pins `torch.set_num_threads(1)`.
   The first published table compared a cold PyTorch against a warm NumPy.
@@ -526,6 +475,63 @@ method that caught them is worth more than any single result.
   same targets" is a verifiable statement rather than an assumption.
 - **Claims are tested by ablation, not asserted.** Three claims in this README
   were removed because the experiment designed to support them refuted them.
+
+---
+
+## Quickstart
+
+```bash
+git clone https://github.com/clementdumeril/ur5e-neural-kinematics.git
+cd ur5e-neural-kinematics
+pip install -r requirements.txt
+```
+
+**Also required:** Webots R2023a or later (tested on R2025a), and an internet
+connection on first launch — the worlds pull their `UR5e`, `PandaHand` and
+`Table` PROTO definitions from GitHub via `EXTERNPROTO`.
+
+**Run the demo.** Open `webots/worlds/my_first_simulation_pandahand.wbt` and
+press Play. The arm reads the cube position from its camera, solves the IK with
+the network, grasps the cube and transfers it to the tray.
+
+**Reproduce the results.**
+
+```bash
+python tests/test_smoke.py                      # imports, paths, a known target   (seconds)
+python src/training/train_true_pinn.py          # retrain the network              (~8 min)
+python experiments/ablation_physics_loss.py     # what the physics term is worth   (~1 h)
+python experiments/multihypothesis_ik.py        # multi-valued IK                  (~55 min)
+python experiments/mesure_continuite.py         # continuity and reach boundary    (~1 min)
+```
+
+<details>
+<summary><b>If Webots uses the wrong Python interpreter</b></summary>
+
+The controllers use whichever `python` is on your `PATH`. If that interpreter
+lacks the dependencies, add a `COMMAND` line to `webots/controllers/*/runtime.ini`:
+
+```ini
+[python]
+COMMAND = C:/path/to/your/python.exe
+```
+
+Webots does **not** support `#` comments in `runtime.ini` — it reads them as
+unknown keys and warns about each one.
+</details>
+
+<details>
+<summary><b>On the vision model, and why you do not need it</b></summary>
+
+The CNN weights (`vision/vgg16.h5`, 37 MB) are not tracked. The default
+perception mode is `VISION_MODE = "color"`, a colour-threshold detector that
+needs no model and is **more accurate than the CNN**: 8 mm against 49 mm on the
+same 200 validation images. The CNN is kept as a documented negative result.
+Without TensorFlow installed, the simulation stays in colour mode and runs end
+to end.
+
+`data/calibration.json` **is** included — it holds the camera pose and the
+pixel-to-world homography, without which the colour detector cannot work.
+</details>
 
 ---
 

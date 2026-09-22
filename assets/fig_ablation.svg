@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 330" width="860" height="330" font-family="Helvetica, Arial, sans-serif"><rect x="0" y="0" width="860" height="330" fill="#ffffff"/>
+<text x="40" y="44" font-size="19" fill="#111827" text-anchor="start" font-weight="bold">What does the physics term actually buy?</text>
+<text x="40" y="68" font-size="13" fill="#6b7280" text-anchor="start">Validation position error — identical data, seed, architecture and schedule; only the loss differs.</text>
+<text x="282" y="148" font-size="15" fill="#111827" text-anchor="end">Supervised only</text>
+<rect x="300" y="118" width="420.0" height="44" rx="3" fill="#d1d5db"/>
+<text x="734.0" y="148" font-size="15" fill="#6b7280" text-anchor="start">0.238 mm</text>
+<text x="282" y="222" font-size="15" fill="#111827" text-anchor="end" font-weight="bold">Physics-informed</text>
+<rect x="300" y="192" width="330.7" height="44" rx="3" fill="#2563eb"/>
+<text x="644.7378218653939" y="222" font-size="15" fill="#111827" text-anchor="start" font-weight="bold">0.187 mm</text>
+<line x1="630.7378218653939" y1="272" x2="720.0" y2="272" stroke="#2563eb" stroke-width="2"/>
+<polygon points="630.7378218653939,272 641.7378218653939,266 641.7378218653939,278" fill="#2563eb"/>
+<text x="675.368910932697" y="262" font-size="15" fill="#2563eb" text-anchor="middle" font-weight="bold">21% reduction</text>
+<text x="40" y="308" font-size="12" fill="#9ca3af" text-anchor="start">20 201 targets, one IK branch, 100 epochs. The mixed-branch case and w_phys = 20 are in the README table.</text>
+</svg>

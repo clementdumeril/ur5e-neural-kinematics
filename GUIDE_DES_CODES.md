@@ -2104,3 +2104,102 @@ for K in 1 2 4 8; do MH_HEADS=$K python experiments/multihypothesis_ik.py; done
 Le jeu de données est mis en cache après la première exécution, et son empreinte
 est reportée dans chaque fichier de résultats : « mêmes cibles » devient
 vérifiable au lieu d'être supposé.
+
+---
+
+## 25. 🎨 Les figures, et comment enregistrer le GIF
+
+### 25.1 Pourquoi les figures sont générées, pas dessinées
+
+Une figure dessinée à la main se désynchronise du jour où un chiffre change, et
+plus personne ne s'en aperçoit. Les deux figures de résultats relisent donc les
+fichiers JSON produits par les expériences :
+
+```bash
+python experiments/figures.py
+```
+
+- `assets/fig_ablation.svg` ← `checkpoints/ablation_physics_loss.json`
+- `assets/fig_benchmark.svg` ← `checkpoints/benchmark_solveurs.json`
+
+Si une mesure bouge, il suffit de relancer le script : le README ne peut pas
+mentir sur des chiffres qu'il n'a pas lui-même produits.
+
+`assets/workflow.svg` est la seule figure écrite à la main, parce qu'elle décrit
+une architecture et non une mesure. Elle est en SVG : vectorielle, modifiable
+dans n'importe quel éditeur, et rendue nativement par GitHub.
+
+### 25.2 Ce que la figure d'architecture doit faire comprendre
+
+Elle montre **deux chemins séparés**, et c'est volontaire :
+
+- **TRAINING** — la prédiction passe par la cinématique directe différentiable
+  *avant* le calcul de l'erreur, et la rétropropagation revient **à travers**
+  cette cinématique. C'est toute la définition de *physics-informed*, et elle
+  était jusqu'ici expliquée en texte, beaucoup trop bas dans la page.
+- **DEPLOYMENT** — la chaîne réelle, caméra → seuillage → homographie → réseau →
+  trajectoire → robot.
+
+Un lecteur qui ne lit rien d'autre doit repartir avec : *« ce n'est pas un
+réseau branché sur un robot, c'est un réseau corrigé par la géométrie du robot »*.
+
+### 25.3 Le GIF : recette
+
+L'image statique actuelle dit seulement « il y a un UR5e dans Webots ». Un GIF
+de 6 à 10 secondes **démontre** quelque chose.
+
+**Ce qu'il doit montrer**, en boucle propre :
+
+```
+cube détecté → approche → descente → saisie → transport → dépose → retour
+```
+
+**Enregistrement dans Webots :**
+
+1. ouvrir `webots/worlds/my_first_simulation_pandahand.wbt` ;
+2. régler la caméra du point de vue à trois quarts, de façon à voir à la fois le
+   cube et le bac — un plan trop frontal écrase la profondeur ;
+3. menu **View → Follow Object → None** pour éviter que la vue suive le bras et
+   donne le tournis ;
+4. **Ctrl+F1** (ou le bouton d'enregistrement) démarre la capture vidéo ;
+5. lancer la simulation en mode **Real-time**, pas en Fast : le GIF doit montrer
+   un mouvement naturel ;
+6. arrêter dès le retour à la pose de lecture.
+
+**Conversion** — viser moins de 5 Mo, sinon GitHub le charge lentement :
+
+```bash
+ffmpeg -i demo.mp4 -vf "fps=12,scale=720:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" -loop 0 assets/demo.gif
+```
+
+12 images par seconde et 720 px de large suffisent largement. Au-delà, le poids
+double sans que personne ne le remarque.
+
+**Ensuite**, remplacer dans le README :
+
+```markdown
+![UR5e pick and place in Webots](assets/webots_single_robot.png)
+```
+
+par
+
+```markdown
+![Pick and place demonstration](assets/demo.gif)
+```
+
+Un commentaire HTML marque déjà l'emplacement exact dans le fichier.
+
+### 25.4 Incrustation des chiffres, si tu veux aller plus loin
+
+Le GIF devient une **preuve** plutôt qu'une illustration si on y lit, discret en
+bas à gauche :
+
+```
+Target : [0.198, -0.728, 0.030] m
+IK     : 0.54 ms
+```
+
+Le contrôleur affiche déjà ces valeurs dans la console de Webots. Deux voies :
+les surimprimer au montage, ou les afficher dans la vue 3D via
+`supervisor.setLabel()`, ce que fait déjà `comparison_controller.py` pour son
+HUD — il y a donc un exemple à recopier dans le dépôt.
