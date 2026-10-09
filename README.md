@@ -8,6 +8,7 @@ closed-loop Webots simulation.**
 [![PyTorch 2.0+](https://img.shields.io/badge/pytorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
 [![Webots R2023a+](https://img.shields.io/badge/webots-R2023a+-green.svg)](https://cyberbotics.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![smoke](https://github.com/clementdumeril/ur5e-neural-kinematics/actions/workflows/smoke.yml/badge.svg)](https://github.com/clementdumeril/ur5e-neural-kinematics/actions/workflows/smoke.yml)
 
 ![System architecture](assets/workflow.svg)
 
@@ -162,9 +163,9 @@ model never improves past its first epoch. At $w_p = 20$ it reaches 3.68 mm — 
 250× improvement over supervised, but still 20× worse than the single-branch
 model and with 71.6° of orientation error, unusable for grasping.
 
----
-
 ![Physics term ablation](assets/fig_ablation.svg)
+
+---
 
 ## Experiment 2 — Modelling the IK branches instead of avoiding them
 
@@ -350,7 +351,7 @@ a library.
 Jacobian column by column, straight from the geometry — no symbolic
 differentiation:
 
-$$J_{v,i} = z_{i-1} 	imes (p_e - p_{i-1}), \qquad J_{\omega,i} = z_{i-1}$$
+$$J_{v,i} = z_{i-1} \times (p_e - p_{i-1}), \qquad J_{\omega,i} = z_{i-1}$$
 
 Turning joint *i* rotates everything downstream about the axis $z_{i-1}$; the
 hand, at lever arm $p_e - p_{i-1}$, therefore moves with that cross product.
@@ -380,8 +381,7 @@ iteratively by linearising the kinematics and inverting the Jacobian — except
 that near a singularity the pseudo-inverse explodes. Levenberg–Marquardt damping
 keeps it bounded:
 
-$$\Delta q = J^T\left(JJ^T + \lambda^2 I
-ight)^{-1} e$$
+$$\Delta q = J^T\left(JJ^T + \lambda^2 I\right)^{-1} e$$
 
 with $e$ the 6-vector pose error, its rotation part taken as the logarithm on
 SO(3). The damping is **adaptive**: zero when the arm is well conditioned,
@@ -450,7 +450,7 @@ without ever signalling that it has left its domain.
 | Limitation | Evidence |
 | :-- | :-- |
 | **Extrapolates poorly outside the training box.** Above the drop-off tray ($x = -0.20$, outside the learned $[0, 0.4]$), error rises to 7–11 mm. | `mesurer_erreur_pinn()`, four scenario waypoints |
-| **Fails silently out of reach**, up to 1.46 m of error with no signal. | Experiment 3 |
+| **Fails silently out of reach**, with no signal: 1.46 m of error at the end of the Experiment 3 line, up to 1.78 m over the full map above. | Experiment 3, `heatmap_erreur.py` |
 | **One tool orientation only.** The gripper cannot approach from the side. | `ROT_DOWN` hard-coded in the generator |
 | **One IK branch** in the shipped model. It cannot route around an obstacle via the elbow-down family. | generator forces `wrist='up', shoulder='left', elbow='up'` |
 | **Not faster than the closed-form solver** — 2.3× slower. The speed claim is against generic iterative solvers, not against trigonometry. | Benchmarks |
@@ -568,7 +568,7 @@ ur5e-neural-kinematics/
 ├── tests/test_smoke.py          # imports, paths, and a known-target check
 │
 ├── CREDITS.md                   # what is inherited, what was built here
-├── GUIDE_DES_CODES.md           # file-by-file walkthrough (FR, 23 chapters)
+├── GUIDE_DES_CODES.md           # file-by-file walkthrough (FR, 25 chapters)
 └── DOCUMENTATION.md             # technical report (FR)
 ```
 

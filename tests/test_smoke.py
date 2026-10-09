@@ -120,6 +120,21 @@ try:
 except Exception:
     verifie('chargement du reseau', False, f'\n{traceback.format_exc(limit=1)}')
 
+# Regression reelle : apres le passage a src/, ur5.py cherchait encore la
+# calibration a son ancien emplacement. Le controleur attrapait l'exception et
+# basculait sans bruit sur la position du superviseur -- la demo tournait, mais
+# sans camera. On appelle donc le chargeur lui-meme, pas un chemin recopie ici.
+print("\n6. Le controleur trouve la calibration camera")
+try:
+    from types import SimpleNamespace
+    from ur5 import UR5
+    calib = UR5.vision_calibration(SimpleNamespace())
+    verifie('UR5.vision_calibration()', 'pixel_to_world_homography' in calib,
+            '(cle pixel_to_world_homography absente)')
+except Exception:
+    verifie('UR5.vision_calibration()', False,
+            f'\n{traceback.format_exc(limit=1)}')
+
 print("\n" + "=" * 70)
 if echecs:
     print(f"ECHEC : {len(echecs)} verification(s) en erreur")

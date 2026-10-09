@@ -55,9 +55,10 @@ Everything below was written here, and is what the README's results refer to.
 
 **Documentation**
 
-- `README.md`, `DOCUMENTATION.md` and the 22-chapter `GUIDE_DES_CODES.md`.
+- `README.md`, `DOCUMENTATION.md` and the 25-chapter `GUIDE_DES_CODES.md`.
 
 ## Licence
 
 Both this project and the upstream work are distributed under the MIT licence.
-See [`LICENSE`](LICENSE).
+[`LICENSE`](LICENSE) carries both copyright notices: the upstream one covers the
+inherited base of `src/control/ur5.py` and the Webots scene.

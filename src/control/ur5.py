@@ -458,10 +458,9 @@ class UR5:
         if self._model is not _MODEL_NOT_LOADED:
             return self._model
 
-        repo_dir = os.path.dirname(os.path.abspath(__file__))
         # Keras 3 peut sauvegarder en .keras (format moderne) comme en .h5
         # (format legacy) : on accepte les deux.
-        cv_dir = os.path.join(repo_dir, "computer_vision")
+        cv_dir = os.path.join(_ROOT, "vision")
         weights = None
         for name in ("vgg16.keras", "vgg16.h5"):
             candidate = os.path.join(cv_dir, name)
@@ -1010,7 +1009,7 @@ class UR5:
         """
         Calibration de la camera, produite par le controleur `data_collector`.
 
-        Le fichier dataset/calibration.json contient :
+        Le fichier data/calibration.json contient :
           - reading_pose        : la pose ou la calibration a ete faite. Toute
                                   prediction n'est valable qu'a CETTE pose.
           - pixel_to_world      : matrice affine 2x3 telle que
@@ -1023,8 +1022,7 @@ class UR5:
         """
         if getattr(self, "_calib", None) is not None:
             return self._calib
-        repo_dir = os.path.dirname(os.path.abspath(__file__))
-        path = os.path.join(repo_dir, "dataset", "calibration.json")
+        path = os.path.join(_ROOT, "data", "calibration.json")
         if not os.path.exists(path):
             raise FileNotFoundError(
                 "Calibration camera absente : " + path +

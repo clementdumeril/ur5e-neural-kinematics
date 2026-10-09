@@ -22,7 +22,7 @@ ur5 = UR5()
 #   "color"      seuillage couleur du cube rouge. Precis (< 3 mm), instantane,
 #                aucun entrainement. C'est la methode qui a servi a etiqueter
 #                le dataset du VGG16 -- donc au moins aussi bonne que lui.
-#   "cnn"        reseau VGG16 (computer_vision/vgg16.h5). Mesure sur les images
+#   "cnn"        reseau VGG16 (vision/vgg16.h5). Mesure sur les images
 #                de validation : ~49 mm d'erreur moyenne, soit 17 % de saisies
 #                reussies sur un cube de 50 mm. Garde pour comparaison.
 #   "supervisor" position exacte lue dans le moteur Webots. Ce n'est pas de la
@@ -374,7 +374,7 @@ def actuate_panda(close=False):
 # ---------------------------------------------------------
 # La calibration pixel -> monde n'est valable qu'a la pose exacte ou elle a ete
 # mesuree. Si la vision est active, on reprend donc la pose enregistree par
-# data_collector dans dataset/calibration.json plutot qu'une valeur en dur.
+# data_collector dans data/calibration.json plutot qu'une valeur en dur.
 READ_POS = [-0.1, -0.68, 0.45]
 READ_ROT = [PI, 0, -PI / 2]
 
