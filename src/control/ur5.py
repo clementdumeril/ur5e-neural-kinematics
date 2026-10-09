@@ -4,6 +4,11 @@
     @date: 2023/6/9
     @author: Allan Souza Almeida
 
+    Extended in this repository by Clément Dumeril: the neural IK bridge in
+    move_to_pose, the closed-loop hold in move_to_config, and the camera
+    calibration and colour detection (vision_calibration, pixel_to_robot,
+    detect_cube_color, camera_offset, move_camera_to). See CREDITS.md.
+
     @how_to_use:
         1. Import the class: from ur5 import UR5
         2. Create an instance of the class: ur5 = UR5()
@@ -520,9 +525,9 @@ class UR5:
                 if os.path.exists(pinn_path):
                     self.pinn_model = PINN6DOF.from_file(pinn_path)
                     self.pinn_model.eval()
-                    print("🧠 VRAI PINN FULL PHYSIQUE chargé avec succès !")
+                    print(f"[IK] Neural IK model loaded: {pinn_path}")
                 else:
-                    print("Fichier PINN introuvable à", pinn_path)
+                    print("[IK] Neural IK model not found:", pinn_path)
             except Exception as e:
                 print("Erreur chargement PINN:", e)
 
@@ -901,7 +906,7 @@ class UR5:
         
         if self.use_pinn and self.pinn_model is not None:
             self.n_pinn += 1
-            print(f"🧠 [PINN AI] Activation du réseau neuronal pour atteindre {pos} !")
+            print(f"[IK] neural IK -> {pos}")
             with torch.no_grad():
                 pos_tensor = torch.tensor([[pos[0], pos[1], pos[2]]], dtype=torch.float32)
                 pred = self.pinn_model(pos_tensor).numpy()[0]
@@ -909,9 +914,9 @@ class UR5:
         else:
             self.n_analytique += 1
             if self.use_pinn and self.pinn_model is None:
-                print("⚠️  [PINN] use_pinn est actif mais AUCUN modele n'est charge "
-                      "-> repli silencieux sur l'IK analytique.")
-            print(f"📐 [IK Analytique] Calcul cinématique classique vers {pos}...")
+                print("[IK] use_pinn is set but no model is loaded: "
+                      "falling back to the closed-form IK.")
+            print(f"[IK] closed-form IK -> {pos}")
             q_list = inverse_kinematics(T, shoulder=shoulder, wrist=wrist, elbow="up")
             
         end_time_ik = time.perf_counter()
@@ -920,11 +925,11 @@ class UR5:
         # Astuce pour transmettre le temps au HUD Webots via le Superviseur
         if hasattr(self, 'supervisor') and hasattr(self.supervisor, 'setLabel'):
             if self.use_pinn:
-                self.supervisor.setLabel(3, f"Temps PINN: {calc_time_ms:.3f} ms", 0.02, 0.12, 0.1, 0xffffff, 0, "Arial")
+                self.supervisor.setLabel(3, f"Neural IK: {calc_time_ms:.3f} ms", 0.02, 0.12, 0.1, 0xffffff, 0, "Arial")
             else:
-                self.supervisor.setLabel(4, f"Temps MATH: {calc_time_ms:.3f} ms", 0.02, 0.16, 0.1, 0xffffff, 0, "Arial")
+                self.supervisor.setLabel(4, f"Closed-form IK: {calc_time_ms:.3f} ms", 0.02, 0.16, 0.1, 0xffffff, 0, "Arial")
 
-        print(f"⏱️  Temps de calcul IK: {calc_time_ms:.3f} ms")
+        print(f"[IK] solve time: {calc_time_ms:.3f} ms")
         
         joint_angles = q_list
                 

@@ -76,8 +76,8 @@ def figure_ablation():
     p.append(texte((X0 + phy * echelle + X0 + sup * echelle) / 2, 262,
                    f'{gain:.0%} reduction', 15, ACCENT, 'middle', gras=True))
 
-    p.append(texte(40, 308, f"20 201 targets, one IK branch, 100 epochs. "
-                            f"The mixed-branch case and w_phys = 20 are in the README table.",
+    p.append(texte(40, 308, f"20,201 targets, one IK branch, 100 epochs. "
+                            f"The mixed-branch case and w_phys = 20 are in docs/experiments.md.",
                    12, GRIS_CLAIR))
     p.append('</svg>')
 
@@ -188,7 +188,7 @@ def figure_architecture():
     W, H = 980, 384
     p = [entete(W, H)]
     p.append(texte(40, 40, 'PINN6DOF and its training loss', 19, NOIR, gras=True))
-    milliers = f'{n_params:,}'.replace(',', ' ')
+    milliers = f'{n_params:,}'
     p.append(texte(40, 63, f'Read from checkpoints/pinn_model_true_physics.pth: '
                            f'{milliers} parameters, hidden width {h}.', 13, GRIS))
 

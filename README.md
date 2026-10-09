@@ -13,33 +13,37 @@ I built this in August and September 2026 on top of an open-source Webots pick-a
 
 The network solves position IK with the tool held pointing down (R³ → R⁶). It takes no orientation as input, so it is not full 6-DoF pose IK.
 
+Key decision: I fixed the IK branch in the data generator instead of learning it, because the multi-head model that learns it is 1.7× less accurate on this task.
+
+Stack: PyTorch, Webots, DH kinematics / geometric Jacobian / damped least squares, homography calibration.
+
 ## Results
 
 | | Value | Source |
 | :-- | --: | :-- |
-| Position / orientation error, 2 002 held-out targets | 0.185 mm / 0.009° | [`train_true_pinn.py`](src/training/train_true_pinn.py) |
+| Position / orientation error, 2,002 held-out targets | 0.185 mm / 0.009° | [`train_true_pinn.py`](src/training/train_true_pinn.py) |
 | Solve time, median, one thread, tensor conversion included | 0.543 ms | [`benchmark_solveurs.json`](checkpoints/benchmark_solveurs.json) |
 | Against IKPY / against the closed-form solver | 55× faster / 2.3× slower | same |
-| Error reduction from the physics term (ablation) | 21 % | [`ablation_physics_loss.json`](checkpoints/ablation_physics_loss.json) |
-| Branch-mixed data, no labels: 2 heads vs 1 head | 0.314 mm vs 3.684 mm | [`multihypothesis_K2.json`](checkpoints/multihypothesis_K2.json) |
+| Error reduction from the FK terms of the loss (ablation) | 21% | [`ablation_physics_loss.json`](checkpoints/ablation_physics_loss.json) |
+| Branch-mixed data, no labels: 2-head model vs best single-output net | 0.314 mm vs 3.68 mm / 71.6° | [`multihypothesis_K2.json`](checkpoints/multihypothesis_K2.json), [`ablation_physics_loss.json`](checkpoints/ablation_physics_loss.json) |
 
 ![IK solve time for six solvers](assets/fig_benchmark.svg)
 
-The closed form is still the fastest. The network is the only differentiable solver in the comparison.
+The closed form stays 2.3× faster; the network is the only differentiable solver here.
 
 ## What I built
 
-I started from [`allan-almeida1/ur5-pick-and-place-webots`](https://github.com/allan-almeida1/ur5-pick-and-place-webots) (MIT), which gave me the Webots scene, a NumPy Denavit–Hartenberg forward kinematics, the closed-form IK with its 8 branches, quintic trajectories and the device wrappers. Everything below is mine; [`CREDITS.md`](CREDITS.md) draws the line file by file.
+I started from [`allan-almeida1/ur5-pick-and-place-webots`](https://github.com/allan-almeida1/ur5-pick-and-place-webots) (MIT), which gave me the Webots scene, a NumPy Denavit–Hartenberg forward kinematics, the closed-form IK with its 8 branches, quintic trajectories and the device wrappers in `ur5.py`. Everything below is mine; [`CREDITS.md`](CREDITS.md) draws the line file by file.
 
 ![PINN6DOF architecture and training loss](assets/fig_architecture.svg)
 
 ### Differentiable forward kinematics
 
-Code: [`ur5_pytorch_fk.py`](src/kinematics/ur5_pytorch_fk.py). The UR5e DH chain rewritten as a batched PyTorch module, six homogeneous transforms multiplied with `torch.bmm`. An end-effector error in metres can now send a gradient back to the joint angles, which the inherited NumPy version could not.
+Code: [`ur5_pytorch_fk.py`](src/kinematics/ur5_pytorch_fk.py). The UR5e DH chain rewritten as a batched PyTorch module, six homogeneous transforms multiplied with `torch.bmm`. An end-effector error in metres can now send a gradient back to the joint angles.
 
 ### The network
 
-Code: [`pinn.py`](src/models/pinn.py), class `PINN6DOF`. An MLP from (x, y, z) to six joint angles: three hidden layers of 512 with SiLU, 530 438 parameters. SiLU rather than ReLU because training backpropagates through the sines and cosines of the FK and needs a smooth activation. Normalisation statistics live in the checkpoint as buffers, so callers work directly in metres and radians.
+Code: [`pinn.py`](src/models/pinn.py), class `PINN6DOF`. An MLP from (x, y, z) to six joint angles: three hidden layers of 512, 530,438 parameters. SiLU activations, chosen because they are smooth and the gradient passes through the sines and cosines of the FK; I did not compare against ReLU.
 
 ### The loss
 
@@ -47,7 +51,7 @@ Code: [`train_true_pinn.py`](src/training/train_true_pinn.py). The predicted ang
 
 $$L = 0.1 \cdot \lVert q - q_{ref} \rVert^2 + \lVert p - p^{*} \rVert^2 + r_{tool}^2 \cdot \lVert R - R_{ref} \rVert_F^2$$
 
-The small data term keeps the network on one IK branch; the physics terms do the accuracy work. $r_{tool} = 0.05$ m turns a rotation error into the tip displacement it causes (1° ≈ 0.9 mm), so both terms are in metres. Adam, 1e-3 decayed to 2e-5, batch 256, 100 epochs.
+The data term alone already reaches 0.238 mm and keeps the network on one IK branch; adding the FK terms takes it to 0.187 mm. $r_{tool} = 0.05$ m turns a rotation error into the tip displacement it causes (1° ≈ 0.9 mm), so both FK terms are in m². Adam, 1e-3 decayed to 2e-5, batch 256, 100 epochs.
 
 <details>
 <summary>Why R_ref = FK(q_ref) and the Frobenius norm</summary>
@@ -58,7 +62,7 @@ The small data term keeps the network on one IK branch; the physics terms do the
 
 ### The dataset generator
 
-Code: [`train_true_pinn.py`](src/training/train_true_pinn.py). 25 000 targets drawn uniformly in x ∈ [0, 0.4], y ∈ [−0.9, −0.5], z ∈ [0.05, 0.45] m, solved by the closed form on one branch (shoulder left, elbow up, wrist up). About 20 000 are reachable, split 90/10. The experiment scripts also check every closed-form solution by FK, because some branch combinations return finite but wrong angles, up to 784 mm off.
+Code: [`train_true_pinn.py`](src/training/train_true_pinn.py). 25,000 targets drawn uniformly in x ∈ [0, 0.4], y ∈ [−0.9, −0.5], z ∈ [0.05, 0.45] m, solved by the closed form on one branch (shoulder left, elbow up, wrist up). About 20,000 are reachable, split 90/10.
 
 ### Multi-head IK
 
@@ -66,45 +70,49 @@ Code: [`multihead.py`](src/models/multihead.py), [`multihypothesis_ik.py`](exper
 
 ### Jacobian and damped least squares
 
-Code: [`jacobian.py`](src/kinematics/jacobian.py), [`ik_dls.py`](src/kinematics/ik_dls.py). The 6×6 geometric Jacobian built column by column, and an iterative IK with adaptive Levenberg–Marquardt damping and an SO(3) log-map rotation error, written as a benchmark baseline.
+Code: [`jacobian.py`](src/kinematics/jacobian.py), [`ik_dls.py`](src/kinematics/ik_dls.py). Geometric Jacobian and an adaptive Levenberg–Marquardt IK, written as a benchmark baseline.
 
 ### Perception
 
-Code: [`ur5.py`](src/control/ur5.py), [`data_collector.py`](webots/controllers/data_collector/data_collector.py). The inherited pixel-to-table mapping used constants from another scene and was 148 mm off. I wrote a calibration run that places the cube on a grid in the camera's field and fits a homography with RANSAC (1.1 mm median residual); detection is a colour threshold and centroid. The camera was tilted 17.2°: I identified its optical axis by casting a ray along each local axis, then corrected the mount to 0.07°. The VGG16 regressor I also tried was 49 mm off against 8 mm for the colour threshold on the same 200 images, so I dropped it.
+Code: [`ur5.py`](src/control/ur5.py#L1013) (`vision_calibration`, `pixel_to_robot`, [`detect_cube_color`](src/control/ur5.py#L1154)), [`data_collector.py`](webots/controllers/data_collector/data_collector.py).
+
+- Pixel-to-table mapping: the inherited constants came from another scene and were 148 mm off. I wrote a calibration run that places the cube on a grid in the camera's field and fits a homography with RANSAC: 1.1 mm median residual.
+- Camera mount: tilted 17.2°. I identified the optical axis by casting a ray along each local axis of the camera, then corrected the mount to 0.07°.
+- Detector: a colour threshold and centroid, 8 mm error against 49 mm for the VGG16 regressor I also tried on the same 200 images, so I dropped the VGG16.
 
 ### Control
 
-Code: [`ur5.py`](src/control/ur5.py), `move_to_config`. A closed-loop hold on joint position at the end of each move, which removed 114 mm of error that built up in open loop.
+Code: [`move_to_config`](src/control/ur5.py#L728) and the neural IK bridge in [`move_to_pose`](src/control/ur5.py#L887). A closed-loop hold on joint position at the end of each move, which removed 114 mm of error that built up in open loop.
 
 ## How it works
 
-![Training and deployment pipeline](assets/workflow.svg)
+![Deployment pipeline in Webots](assets/workflow.svg)
 
-Training runs offline on targets solved by the closed form. In Webots the network replaces the solver: the camera gives a target, one forward pass gives six angles, and a quintic trajectory drives the arm there. The FK is only used in the loss, not at inference.
+In Webots the network solves every move to the cube and to the tray. The camera reading pose (x = −0.10 m) is outside the training box, where the network would be 3.2 mm off and shift the camera, so that one move stays on the closed form.
 
 ## How I checked it
 
-### Ablation of the physics term
+### Ablation of the loss
 
-Same seed, data, architecture and schedule; only the loss changes. On single-branch data the physics term takes the error from 0.238 to 0.187 mm. On branch-mixed data a supervised network collapses to 911 mm, the average of several valid configurations, and the physics term alone only gets it to 3.68 mm with 71.6° of orientation error.
+Same seed, data, architecture and schedule; only the loss changes. On single-branch data the FK terms take the error from 0.238 to 0.187 mm. (0.187 mm is the ablation's own run on its shared dataset; the shipped model, trained separately by `train_true_pinn.py`, reaches 0.185 mm.) On branch-mixed data a supervised network collapses to 911 mm, the average of several valid configurations, and the FK terms alone only bring it to 3.68 mm with 71.6° of orientation error.
 
 ![Effect of the physics term](assets/fig_ablation.svg)
 
 ### Multi-head sweep
 
-On that mixed data, two heads reach 0.314 mm and 0.202°. More heads recover more of the solution set (87 % of the existing branches at K = 8) without improving accuracy. On this task it still loses to fixing the branch in the generator (1.7× worse in position, about 19× slower), so the repository ships the single-branch model.
+On that mixed data, two heads reach 0.314 mm and 0.202° with no branch labels; more heads recover more of the solution set (87% at K = 8) but are not more accurate. K = 1 (8.88 mm) has no data term, unlike the 3.68 mm net of the ablation. Against the shipped model, two heads are 1.7× less accurate and about 9× slower (4.9 against 0.54 ms).
 
 ![Multi-head sweep over K](assets/fig_multihead.svg)
 
 ### Error on the simulated robot
 
-Running the network's output back through its own FK only tests internal consistency. `mesurer_erreur_pinn()` drives the arm to the same target with the closed form and with the network and compares the poses reached in the physics engine. That gave 0.30 mm at the grasp point on the previous model, before I added the orientation term; the current model has not been re-measured in Webots yet.
+`mesurer_erreur_pinn()` sends the arm to the same target with the closed form and with the network and compares the poses reached in the physics engine, not the network's own FK. It gave 0.30 mm at the grasp point on the previous model, before the orientation term; the current model has not been re-measured yet.
 
 ### Timing and the Jacobian
 
-Timings discard 200 warm-up calls and run on one thread. My first table compared a cold PyTorch with a warm NumPy and showed the network beating the closed form; with warm-up on both sides it is 2.3× slower. The Jacobian matches a central-difference derivative of the FK to 3.2 × 10⁻¹⁰ over 200 random configurations.
+Timings discard 200 warm-up calls and run on one thread. The Jacobian matches a central-difference derivative of the FK to 3.2 × 10⁻¹⁰ over 200 random configurations.
 
-Three claims from earlier versions of this README did not survive these measurements: that a supervised network averages the 8 IK solutions in this setup, that the network is smoother than analytic solvers along a path, and that it beats the closed form on speed. The full tables, the continuity test, the DLS results and the withdrawn claims are in [`docs/experiments.md`](docs/experiments.md).
+I removed three claims from earlier versions of this README after measuring them; [`docs/experiments.md`](docs/experiments.md) lists them, with the full tables, the continuity test and the DLS results.
 
 ## Limitations
 
@@ -127,7 +135,7 @@ pip install -r requirements.txt
 ```bash
 python tests/test_smoke.py                    # imports, paths, a known target        (seconds)
 python src/training/train_true_pinn.py        # retrain the network                   (~8 min)
-python experiments/ablation_physics_loss.py   # physics-term ablation                 (~1 h)
+python experiments/ablation_physics_loss.py   # loss ablation                         (~1 h)
 python experiments/multihypothesis_ik.py      # multi-head IK                         (~55 min)
 python experiments/mesure_continuite.py       # continuity and reach boundary         (~1 min)
 python experiments/benchmark_solveurs.py      # six solvers, timed                    (~4 min)

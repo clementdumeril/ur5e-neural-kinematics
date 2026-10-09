@@ -10,5 +10,5 @@
 <line x1="630.7378218653939" y1="272" x2="720.0" y2="272" stroke="#2563eb" stroke-width="2"/>
 <polygon points="630.7378218653939,272 641.7378218653939,266 641.7378218653939,278" fill="#2563eb"/>
 <text x="675.368910932697" y="262" font-size="15" fill="#2563eb" text-anchor="middle" font-weight="bold">21% reduction</text>
-<text x="40" y="308" font-size="12" fill="#9ca3af" text-anchor="start">20 201 targets, one IK branch, 100 epochs. The mixed-branch case and w_phys = 20 are in the README table.</text>
+<text x="40" y="308" font-size="12" fill="#9ca3af" text-anchor="start">20,201 targets, one IK branch, 100 epochs. The mixed-branch case and w_phys = 20 are in docs/experiments.md.</text>
 </svg>

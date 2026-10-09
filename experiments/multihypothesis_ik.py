@@ -1,41 +1,38 @@
 """
-IK multi-hypotheses : modeliser les branches au lieu de les eviter.
+Multi-hypothesis IK: model the solution branches instead of avoiding them.
 
-Ce que l'ablation avait etabli
-------------------------------
-Entraine sur des donnees melangeant les branches de solution, un reseau a une
-seule sortie echoue :
+What the ablation showed
+------------------------
+Trained on data that mixes IK solution branches, a single-output network fails:
 
-    supervise (w_phys=0)   911,06 mm
-    physique  (w_phys=1)    69,57 mm
-    physique  (w_phys=20)    3,68 mm, mais 71,6 deg d'orientation
+    supervised (w_phys=0)   911.06 mm
+    physics    (w_phys=1)    69.57 mm
+    physics    (w_phys=20)    3.68 mm, but 71.6 deg of orientation error
 
-Le depot s'en sort en imposant une seule famille de solutions dans le
-generateur. Le probleme est evite, pas resolu.
+The shipped model avoids this by keeping one branch in the data generator.
 
-Ce que cette experience teste
------------------------------
-Un reseau a K tetes, entraine avec un min relache sur la perte PHYSIQUE seule :
+What this experiment tests
+--------------------------
+A network with K heads, trained with a relaxed min on the physics loss only:
 
-    L = min_k  L_physique( q(k) )
+    L = min_k  L_phys( q(k) )
 
-Aucune etiquette de branche n'est fournie. Le reseau doit decouvrir seul la
-structure multivaluee du probleme.
+No branch labels are given. The network has to find the multi-valued structure
+on its own.
 
-Choix de mesure, et pourquoi ils comptent
------------------------------------------
-1. La selection best-of-K se fait sur la POSE COMPLETE, avec la meme ponderation
-   que la perte d'entrainement. Selectionner sur la position seule puis
-   rapporter l'orientation de la tete ainsi choisie ferait diverger l'objectif
-   d'entrainement, la regle d'inference et la metrique publiee.
+Measurement choices
+-------------------
+1. Best-of-K selection uses the full pose, with the same weighting as the
+   training loss. Selecting on position alone and then reporting the chosen
+   head's orientation would make the training objective, the inference rule
+   and the published metric disagree.
 
-2. Les distances entre configurations articulaires sont PERIODIQUES. Deux angles
-   a +179 et -179 degres different physiquement de 2 degres, pas de 358. Une
-   norme naive fausserait l'attribution des tetes aux branches.
+2. Distances between joint configurations are periodic: +179 and -179 degrees
+   are 2 degrees apart, not 358. A plain norm would mis-assign heads to
+   branches.
 
-3. On mesure le RAPPEL par branche, pas seulement le nombre de branches
-   couvertes. Couvrir 2 branches sur 2 disponibles et 2 sur 4 sont deux
-   resultats tres differents, et seul le second serait un effondrement partiel.
+3. Recall is measured per branch, not only as the number of branches covered.
+   Covering 2 of 2 available branches and 2 of 4 are different results.
 
 Usage
 -----
