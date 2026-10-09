@@ -55,9 +55,9 @@ print(f"[Mode] Solveur de cinematique inverse : "
 
 # Affichage du titre selon le robot
 if mode == "pinn":
-    ur5.supervisor.setLabel(1, "ROBOT ROUGE : IA TRUE PINN", 0.02, 0.05, 0.1, 0xff0000, 0, "Arial")
+    ur5.supervisor.setLabel(1, "Neural IK", 0.02, 0.05, 0.1, 0xff0000, 0, "Arial")
 else:
-    ur5.supervisor.setLabel(2, "ROBOT VERT : IK ANALYTIQUE", 0.02, 0.10, 0.1, 0x00ff00, 0, "Arial")
+    ur5.supervisor.setLabel(2, "Closed-form IK", 0.02, 0.10, 0.1, 0x00ff00, 0, "Arial")
 
 # --- PandaHand : recuperation des moteurs -------------------------------
 # Les noms des moteurs changent selon la version du PROTO PandaHand :

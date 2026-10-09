@@ -1,3 +1,20 @@
+"""
+Trains the shipped neural IK model (checkpoints/pinn_model_true_physics.pth).
+
+    python src/training/train_true_pinn.py        (~8 min on a laptop CPU)
+
+1. Dataset: 25 000 targets drawn uniformly in the box above the Webots table,
+   tool pointing down, solved by the closed-form IK on a single branch
+   (shoulder left, elbow up, wrist up). Unreachable targets are dropped.
+2. Model: PINN6DOF (src/models/pinn.py), 3 x 512 SiLU.
+3. Loss: the predicted angles go through the differentiable forward kinematics
+   (src/kinematics/ur5_pytorch_fk.py) and the error is taken on the pose they
+   reach:
+       0.1 * |q - q_ref|^2  +  |p - p*|^2  +  r_tool^2 * |R - R_ref|_F^2
+   The data term keeps the network on the chosen branch; the position and
+   orientation terms do the accuracy work.
+4. Adam 1e-3, step decay to 2e-5, 100 epochs; the best validation epoch is kept.
+"""
 import os
 import sys
 import numpy as np
@@ -7,8 +24,8 @@ import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 import math
 
-# --- 1. MOCKING POUR WEBOTS ---
-# Simulation des modules Webots pour pouvoir importer ur5.py
+# --- 1. Webots stub ---
+# ur5.py imports the Webots `controller` module; stub it to run outside Webots.
 if 'controller' not in sys.modules:
     sys.modules['controller'] = type('controller', (), {'Supervisor': type('Supervisor', (), {})})
     
@@ -23,8 +40,8 @@ from ur5 import build_matrix, inverse_kinematics
 from pinn import PINN6DOF
 from ur5_pytorch_fk import UR5ForwardKinematicsPyTorch
 
-# --- Destination des modeles : toujours checkpoints/, jamais le
-# --- repertoire courant. C'est la que ur5.py va chercher les poids.
+# --- Weights always go to checkpoints/, never the working directory:
+# --- that is where ur5.py loads them from.
 MODELS_DIR = os.path.join(_ROOT, 'checkpoints')
 os.makedirs(MODELS_DIR, exist_ok=True)
 
@@ -33,35 +50,35 @@ def model_path(filename):
     return os.path.join(MODELS_DIR, filename)
 
 
-# --- 2. GENERATION DES DONNEES (SUPERVISION LEGERE) ---
+# --- 2. Dataset ---
 def generate_webots_dataset(num_samples=25000):
-    print(f"Génération de {num_samples} cibles pour la table Webots...")
-    
-    # Zone de la table Webots (là où se trouve le cube)
+    print(f"Generating {num_samples} targets over the Webots table...")
+
+    # Box above the Webots table, where the cube can be
     xs = np.random.uniform(0.0, 0.4, num_samples)
     ys = np.random.uniform(-0.9, -0.5, num_samples)
     zs = np.random.uniform(0.05, 0.45, num_samples)
-    
+
     targets = np.column_stack((xs, ys, zs))
     valid_targets = []
     valid_q = []
-    
+
     for t in targets:
         try:
-            # Orientation vers le bas [math.pi, 0, -math.pi/2]
+            # Tool pointing down: [pi, 0, -pi/2]
             T = build_matrix(t, [math.pi, 0, -math.pi/2], euler='XYZ')
-            # Famille de solutions "Coude en l'air, épaule gauche" pour éviter la table
+            # One solution family (shoulder left, elbow up) keeps the arm clear of the table
             q_sol = inverse_kinematics(T, wrist='up', shoulder='left', elbow='up')
-            
+
             if not np.any(np.isnan(q_sol)):
                 valid_targets.append(t)
                 valid_q.append(q_sol)
         except Exception:
-            pass 
+            pass
 
     valid_targets = np.array(valid_targets, dtype=np.float32)
     valid_q = np.array(valid_q, dtype=np.float32)
-    print(f"-> {len(valid_targets)} échantillons générés.")
+    print(f"-> {len(valid_targets)} reachable samples.")
     return valid_targets, valid_q
 
 
@@ -84,7 +101,7 @@ def train():
     dataset = TensorDataset(X_train_t, y_train_t)
     train_loader = DataLoader(dataset, batch_size=256, shuffle=True)
 
-    # 2. Modèle et normalisation
+    # 2. Model and normalisation statistics
     model = PINN6DOF(hidden_dim=512)
     model.mean_in = X_train_t.mean(dim=0)
     model.std_in = X_train_t.std(dim=0)
@@ -93,21 +110,20 @@ def train():
 
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
     mse = nn.MSELoss()
-    
-    # 3. Le Moteur de Physique (Forward Kinematics en PyTorch)
+
+    # 3. Differentiable forward kinematics
     fk_engine = UR5ForwardKinematicsPyTorch()
 
-    # Longueur caracteristique de l'outil (m). Elle convertit une erreur
-    # de rotation, sans dimension, en un deplacement equivalent au bord de
-    # la pince : sans cela les deux termes de la perte physique ne seraient
-    # pas comparables, l'un etant en metres carres et l'autre pas.
+    # Characteristic tool length (m). It turns a dimensionless rotation error
+    # into the displacement it causes at the gripper tip, so the position and
+    # orientation terms share a unit.
     R_OUTIL = 0.05
 
     epochs = 100
     best_err = float('inf')
 
-    print(f"\n--- ENTRAÎNEMENT DU VRAI PINN : {epochs} époques ---")
-    print("Loss combinée = 0.1 * Data Loss (Famille de solution) + 1.0 * Physics Loss (Précision géométrique mm)\n")
+    print(f"\n--- Training, {epochs} epochs ---")
+    print("Loss = 0.1 * data term (solution branch) + 1.0 * physics term (pose reached)\n")
 
     for epoch in range(epochs):
         model.train()
@@ -115,42 +131,39 @@ def train():
 
         for bx, by in train_loader:
             optimizer.zero_grad()
-            
-            # 1. L'IA devine les 6 angles
+
+            # Predicted joint angles
             pred_q = model(bx)
-            
-            # 2. SUPERVISION LEGERE : Aide l'IA à rester sur "Coude en l'air"
+
+            # Data term: keeps the network on the chosen branch
             loss_data = mse(pred_q, by)
-            
-            # 3. VERITABLE PINN : On passe les angles dans le simulateur PyTorch
-            # pour voir où le bout du bras atterrit !
+
+            # Physics term: run the predicted angles through the FK and see
+            # where the end-effector lands
             T_pred = fk_engine.forward(pred_q)
             T_ref = fk_engine.forward(by)
 
-            # 3a. Position : le bout du bras est-il au bon endroit ?
+            # Position: is the tip on the target?
             loss_pos = mse(T_pred[:, :3, 3], bx)
 
-            # 3b. Orientation : la pince pointe-t-elle dans la bonne direction ?
+            # Orientation: is the gripper pointing the right way?
             #
-            # Sans ce terme la perte est AVEUGLE a l orientation : faire tourner
-            # q6 de 180 deg ne deplace le point d aucun micron mais retourne la
-            # pince, et les deux poses obtiennent exactement le meme score.
+            # Without this term the loss is blind to orientation: turning q6 by
+            # 180 deg moves the point by zero microns but flips the gripper, and
+            # both poses get the same score.
             #
-            # On compare a FK(reference) plutot qu a une matrice reconstruite :
-            # les deux passent par la MEME cinematique directe, donc aucune
-            # convention d angles d Euler ne peut fausser la comparaison.
-            # Norme de Frobenius plutot que distance geodesique : celle-ci
-            # ferait intervenir un arccos dont le gradient diverge pres de zero,
-            # la ou le reseau doit justement converger.
+            # Compared against FK(reference) rather than a rebuilt matrix: both
+            # sides go through the same kinematics, so no Euler-angle convention
+            # can distort the comparison. Frobenius norm rather than geodesic
+            # distance, whose arccos has a gradient that diverges near zero,
+            # exactly where the network has to converge.
             loss_rot = mse(T_pred[:, :3, :3], T_ref[:, :3, :3])
 
-            # 3c. Les deux termes n ont pas la meme dimension : on ramene la
-            # rotation a un deplacement equivalent au bord de l outil.
+            # Bring the rotation error to an equivalent tip displacement
             loss_phys = loss_pos + (R_OUTIL ** 2) * loss_rot
-            
-            # 4. On additionne (La Physique est 10x plus importante)
+
             loss = 0.1 * loss_data + 1.0 * loss_phys
-            
+
             loss.backward()
             optimizer.step()
             total_loss += loss.item() * len(bx)
@@ -161,22 +174,22 @@ def train():
             val_pred = model(X_val_t)
             T_val = fk_engine.forward(val_pred)
             T_ref_val = fk_engine.forward(y_val_t)
-            
-            # Erreur spatiale absolue en millimètres (MSE de la Physics Loss pure)
+
+            # Mean position error of the pose reached, in millimetres
             dist_err_mm = torch.mean(
                 torch.norm(T_val[:, :3, 3] - X_val_t, dim=1)).numpy() * 1000.0
 
-            # Erreur d orientation, en degres. Ici l arccos est permis : c est
-            # une mesure, pas une perte, son gradient n a aucune importance.
+            # Orientation error in degrees. arccos is fine here: this is a
+            # metric, not a loss, so its gradient does not matter.
             R_res = torch.bmm(T_ref_val[:, :3, :3].transpose(1, 2),
                               T_val[:, :3, :3])
             cos = ((R_res[:, 0, 0] + R_res[:, 1, 1] + R_res[:, 2, 2]) - 1.0) / 2.0
             rot_err_deg = torch.rad2deg(
                 torch.acos(cos.clamp(-1.0, 1.0))).mean().item()
-            
+
             angle_mse = mse(val_pred, y_val_t).item()
 
-        # Decay du Learning Rate
+        # Step decay of the learning rate
         if epoch == 30:
             for g in optimizer.param_groups: g['lr'] = 5e-4
         if epoch == 60:
@@ -193,7 +206,7 @@ def train():
             best_err = dist_err_mm
             model.save_model(model_path("pinn_model_true_physics.pth"))
 
-    print(f"\n[OK] Meilleur VRAI PINN enregistré dans models/pinn_model_true_physics.pth (Précision: {best_err:.3f} mm)")
+    print(f"\n[OK] Best model saved to checkpoints/pinn_model_true_physics.pth ({best_err:.3f} mm)")
 
 if __name__ == "__main__":
     train()

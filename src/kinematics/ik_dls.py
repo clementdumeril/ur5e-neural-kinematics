@@ -1,38 +1,35 @@
 """
-Cinematique inverse par moindres carres amortis (Damped Least Squares).
+Inverse kinematics by damped least squares (DLS).
 
-Le principe
------------
-On ne sait pas inverser la cinematique directe en forme fermee pour un robot
-quelconque, mais on sait la LINEARISER : au voisinage de q,
+Principle
+---------
+A general robot has no closed-form inverse, but its forward kinematics can be
+linearised around q:
 
     dx = J(q) dq
 
-Il suffirait donc d'inverser J. Sauf qu'au voisinage d'une singularite J perd
-son rang : la pseudo-inverse explose et le solveur demande des vitesses
-articulaires infinies pour un deplacement fini.
+Inverting J would be enough, except that J loses rank near a singularity: the
+pseudo-inverse blows up and asks for unbounded joint velocities to make a finite
+move.
 
-L'amortissement de Levenberg-Marquardt, introduit en robotique par Nakamura et
-Wampler puis Chiaverini, remplace l'inversion brutale par
+Levenberg-Marquardt damping (Nakamura and Wampler, then Chiaverini) replaces the
+plain inverse with
 
     dq = J^T (J J^T + lambda^2 I)^-1 e
 
-Le terme lambda^2 I garantit que la matrice reste inversible. Le prix est un
-biais : loin des singularites la solution amortie s'ecarte legerement de la
-pseudo-inverse. C'est le compromis classique entre exactitude et robustesse, et
-il est explicite ici plutot que subi.
+The lambda^2 I term keeps the matrix invertible. The cost is a bias: away from
+singularities the damped step differs slightly from the pseudo-inverse.
 
-Amortissement adaptatif
------------------------
-Un lambda constant amortit meme la ou ce n'est pas necessaire. On le module
-donc selon la plus petite valeur singuliere de J : nul quand le bras est bien
-conditionne, croissant a l'approche de la singularite.
+Adaptive damping
+----------------
+A constant lambda damps even where it is not needed, so lambda is set from the
+smallest singular value of J: zero when the arm is well conditioned, growing as
+it approaches a singularity.
 
-Ce que ce fichier apporte au projet
------------------------------------
-Il complete la chaine geometrie -> Jacobien -> IK numerique, et fournit au banc
-d'essai une troisieme reference, entre la forme fermee (exacte mais propre a ce
-robot) et le reseau (rapide mais silencieux hors domaine).
+Role in this project
+--------------------
+A third reference for the solver benchmark, between the closed form (exact but
+specific to this robot) and the network (fast but silent outside its domain).
 """
 import numpy as np
 

@@ -18,8 +18,8 @@ def main():
     print("=======================================================\n")
     
     # Textes HUD Statiques (Titres)
-    robot.setLabel(0, "UR5e A (Rouge) : IA TRUE PINN", 0.02, 0.02, 0.1, 0xff0000, 0, "Arial")
-    robot.setLabel(1, "UR5e B (Vert) : IK ANALYTIQUE", 0.02, 0.06, 0.1, 0x00ff00, 0, "Arial")
+    robot.setLabel(0, "UR5e A (red cube): neural IK", 0.02, 0.02, 0.1, 0xff0000, 0, "Arial")
+    robot.setLabel(1, "UR5e B (green cube): closed-form IK", 0.02, 0.06, 0.1, 0x00ff00, 0, "Arial")
     
     # Boucle infinie pour maintenir le controleur en vie
     while robot.step(timestep) != -1:

@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 384" width="980" height="384" font-family="Helvetica, Arial, sans-serif"><rect x="0" y="0" width="980" height="384" fill="#ffffff"/>
+<text x="40" y="40" font-size="19" fill="#111827" text-anchor="start" font-weight="bold">PINN6DOF and its training loss</text>
+<text x="40" y="63" font-size="13" fill="#6b7280" text-anchor="start">Read from checkpoints/pinn_model_true_physics.pth: 530 438 parameters, hidden width 512.</text>
+<rect x="40" y="110" width="110" height="56" rx="6" fill="#f9fafb" stroke="#d1d5db" stroke-width="1.5"/>
+<text x="95.0" y="135.0" font-size="14" fill="#111827" text-anchor="middle" font-weight="bold">target p*</text>
+<text x="95.0" y="153.0" font-size="11" fill="#6b7280" text-anchor="middle">(x, y, z) in m</text>
+<line x1="150" y1="138" x2="171.0" y2="138.0" stroke="#6b7280" stroke-width="1.8"/><polygon points="180,138 171.0,143.0 171.0,133.0" fill="#6b7280"/>
+<rect x="180" y="110" width="100" height="56" rx="6" fill="#f9fafb" stroke="#d1d5db" stroke-width="1.5"/>
+<text x="230.0" y="135.0" font-size="14" fill="#111827" text-anchor="middle" font-weight="bold">normalise</text>
+<text x="230.0" y="153.0" font-size="11" fill="#6b7280" text-anchor="middle">mean / std</text>
+<line x1="280" y1="138" x2="301.0" y2="138.0" stroke="#6b7280" stroke-width="1.8"/><polygon points="310,138 301.0,143.0 301.0,133.0" fill="#6b7280"/>
+<rect x="310" y="110" width="104" height="56" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+<text x="362.0" y="135.0" font-size="14" fill="#2563eb" text-anchor="middle" font-weight="bold">Linear 512</text>
+<text x="362.0" y="153.0" font-size="11" fill="#6b7280" text-anchor="middle">SiLU</text>
+<line x1="414" y1="138" x2="421.0" y2="138.0" stroke="#6b7280" stroke-width="1.8"/><polygon points="430,138 421.0,143.0 421.0,133.0" fill="#6b7280"/>
+<rect x="430" y="110" width="104" height="56" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+<text x="482.0" y="135.0" font-size="14" fill="#2563eb" text-anchor="middle" font-weight="bold">Linear 512</text>
+<text x="482.0" y="153.0" font-size="11" fill="#6b7280" text-anchor="middle">SiLU</text>
+<line x1="534" y1="138" x2="541.0" y2="138.0" stroke="#6b7280" stroke-width="1.8"/><polygon points="550,138 541.0,143.0 541.0,133.0" fill="#6b7280"/>
+<rect x="550" y="110" width="104" height="56" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+<text x="602.0" y="135.0" font-size="14" fill="#2563eb" text-anchor="middle" font-weight="bold">Linear 512</text>
+<text x="602.0" y="153.0" font-size="11" fill="#6b7280" text-anchor="middle">SiLU</text>
+<line x1="654" y1="138" x2="661.0" y2="138.0" stroke="#6b7280" stroke-width="1.8"/><polygon points="670,138 661.0,143.0 661.0,133.0" fill="#6b7280"/>
+<rect x="670" y="110" width="100" height="56" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+<text x="720.0" y="135.0" font-size="14" fill="#2563eb" text-anchor="middle" font-weight="bold">Linear 6</text>
+<text x="720.0" y="153.0" font-size="11" fill="#6b7280" text-anchor="middle">de-normalise</text>
+<line x1="770" y1="138" x2="791.0" y2="138.0" stroke="#6b7280" stroke-width="1.8"/><polygon points="800,138 791.0,143.0 791.0,133.0" fill="#6b7280"/>
+<rect x="800" y="110" width="140" height="56" rx="6" fill="#f9fafb" stroke="#d1d5db" stroke-width="1.5"/>
+<text x="870.0" y="135.0" font-size="14" fill="#111827" text-anchor="middle" font-weight="bold">q1 ... q6</text>
+<text x="870.0" y="153.0" font-size="11" fill="#6b7280" text-anchor="middle">joint angles, rad</text>
+<text x="560" y="96" font-size="12" fill="#9ca3af" text-anchor="middle">used at inference: one forward pass, no iteration</text>
+<line x1="870" y1="166" x2="870.0" y2="241.0" stroke="#6b7280" stroke-width="1.8"/><polygon points="870,250 865.0,241.0 875.0,241.0" fill="#6b7280"/>
+<rect x="760" y="250" width="180" height="60" rx="6" fill="#f9fafb" stroke="#d1d5db" stroke-width="1.5"/>
+<text x="850.0" y="277.0" font-size="14" fill="#111827" text-anchor="middle" font-weight="bold">differentiable FK</text>
+<text x="850.0" y="295.0" font-size="11" fill="#6b7280" text-anchor="middle">DH model in PyTorch</text>
+<line x1="760" y1="280" x2="649.0" y2="280.0" stroke="#6b7280" stroke-width="1.8"/><polygon points="640,280 649.0,275.0 649.0,285.0" fill="#6b7280"/>
+<rect x="470" y="250" width="170" height="60" rx="6" fill="#f9fafb" stroke="#d1d5db" stroke-width="1.5"/>
+<text x="555.0" y="277.0" font-size="14" fill="#111827" text-anchor="middle" font-weight="bold">pose reached</text>
+<text x="555.0" y="295.0" font-size="11" fill="#6b7280" text-anchor="middle">position p, rotation R</text>
+<line x1="470" y1="280" x2="359.0" y2="280.0" stroke="#6b7280" stroke-width="1.8"/><polygon points="350,280 359.0,275.0 359.0,285.0" fill="#6b7280"/>
+<rect x="40" y="240" width="310" height="80" rx="6" fill="#ffffff" stroke="#111827" stroke-width="1.5"/>
+<text x="195.0" y="285.0" font-size="14" fill="#111827" text-anchor="middle" font-weight="bold"></text>
+<text x="56" y="264" font-size="14" fill="#111827" text-anchor="start" font-weight="bold">loss</text>
+<text x="56" y="286" font-size="13" fill="#6b7280" text-anchor="start">0.1 · ‖q − q_ref‖²   (data term)</text>
+<text x="56" y="306" font-size="13" fill="#111827" text-anchor="start">+ ‖p − p*‖² + r_tool² · ‖R − R_ref‖<tspan baseline-shift="sub" font-size="10">F</tspan><tspan baseline-shift="super" font-size="10">2</tspan></text>
+<line x1="330" y1="240" x2="330.0" y2="179.0" stroke="#2563eb" stroke-width="1.8" stroke-dasharray="6 4"/><polygon points="330,170 335.0,179.0 325.0,179.0" fill="#2563eb"/>
+<text x="342" y="216" font-size="12" fill="#2563eb" text-anchor="start">backprop through the FK</text>
+<text x="342" y="232" font-size="12" fill="#2563eb" text-anchor="start">into the weights</text>
+<text x="500" y="362" font-size="11" fill="#9ca3af" text-anchor="middle">r_tool = 0.05 m turns a rotation error into the tip displacement it causes. R_ref = FK(q_ref).</text>
+</svg>

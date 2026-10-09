@@ -53,9 +53,9 @@ def figure_ablation():
     echelle = LARG / sup
 
     p = [entete(W, H)]
-    p.append(texte(40, 44, 'What does the physics term actually buy?', 19, NOIR, gras=True))
-    p.append(texte(40, 68, 'Validation position error — identical data, seed, architecture and schedule; '
-                           'only the loss differs.', 13, GRIS))
+    p.append(texte(40, 44, 'Effect of the physics term on validation error', 19, NOIR, gras=True))
+    p.append(texte(40, 68, 'Same data, seed, architecture and schedule. Only the loss differs.',
+                   13, GRIS))
 
     for i, (nom, val, couleur, bord) in enumerate([
             ('Supervised only', sup, '#d1d5db', None),
@@ -138,8 +138,8 @@ def figure_benchmark():
         p.append(texte(x, yg + 18, f'{d:g} ms', 11, GRIS_CLAIR, 'middle'))
 
     p.append(texte(40, yg + 46,
-                   'The network is not faster than the closed form. It is faster than generic '
-                   'iterative solvers, and it is the only differentiable one.', 12, GRIS))
+                   'The closed form stays 2.3x faster than the network. The network is the only '
+                   'differentiable solver in this set.', 12, GRIS))
     p.append(texte(40, yg + 64,
                    '* IKPY is measured in the URDF frame, which does not coincide with this '
                    "project's DH table; only the timing is comparable.", 11, GRIS_CLAIR))
@@ -150,8 +150,150 @@ def figure_benchmark():
     print(f"  {out}  ({len(lignes)} solveurs)")
 
 
+# =====================================================================
+# Figure 3 : l'architecture, lue dans le checkpoint livre
+# =====================================================================
+def boite(x, y, w, h, titre, sous_titre='', fond='#f9fafb', bord='#d1d5db',
+          couleur=NOIR):
+    s = [f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="6" fill="{fond}" '
+         f'stroke="{bord}" stroke-width="1.5"/>']
+    if sous_titre:
+        s.append(texte(x + w / 2, y + h / 2 - 3, titre, 14, couleur, 'middle', gras=True))
+        s.append(texte(x + w / 2, y + h / 2 + 15, sous_titre, 11, GRIS, 'middle'))
+    else:
+        s.append(texte(x + w / 2, y + h / 2 + 5, titre, 14, couleur, 'middle', gras=True))
+    return '\n'.join(s)
+
+
+def fleche(x1, y1, x2, y2, couleur=GRIS, pointilles=False):
+    d = ' stroke-dasharray="6 4"' if pointilles else ''
+    import math
+    a = math.atan2(y2 - y1, x2 - x1)
+    px, py = x2 - 9 * math.cos(a), y2 - 9 * math.sin(a)
+    gx, gy = px - 5 * math.sin(a), py + 5 * math.cos(a)
+    hx, hy = px + 5 * math.sin(a), py - 5 * math.cos(a)
+    return (f'<line x1="{x1}" y1="{y1}" x2="{px:.1f}" y2="{py:.1f}" stroke="{couleur}" '
+            f'stroke-width="1.8"{d}/>'
+            f'<polygon points="{x2},{y2} {gx:.1f},{gy:.1f} {hx:.1f},{hy:.1f}" fill="{couleur}"/>')
+
+
+def figure_architecture():
+    import torch
+    ckpt = torch.load(os.path.join(_ROOT, 'checkpoints', 'pinn_model_true_physics.pth'),
+                      map_location='cpu', weights_only=True)
+    h = ckpt['hidden_dim']
+    n_params = sum(v.numel() for k, v in ckpt['state_dict'].items()
+                   if k.startswith('net.'))
+
+    W, H = 980, 384
+    p = [entete(W, H)]
+    p.append(texte(40, 40, 'PINN6DOF and its training loss', 19, NOIR, gras=True))
+    milliers = f'{n_params:,}'.replace(',', ' ')
+    p.append(texte(40, 63, f'Read from checkpoints/pinn_model_true_physics.pth: '
+                           f'{milliers} parameters, hidden width {h}.', 13, GRIS))
+
+    # chemin d'inference
+    y = 110
+    p.append(boite(40, y, 110, 56, 'target p*', '(x, y, z) in m'))
+    p.append(fleche(150, y + 28, 180, y + 28))
+    p.append(boite(180, y, 100, 56, 'normalise', 'mean / std'))
+    p.append(fleche(280, y + 28, 310, y + 28))
+    for i in range(3):
+        x = 310 + i * 120
+        p.append(boite(x, y, 104, 56, f'Linear {h}', 'SiLU', fond=ACCENT_FOND,
+                       bord=ACCENT, couleur=ACCENT))
+        p.append(fleche(x + 104, y + 28, x + 120, y + 28))
+    p.append(boite(670, y, 100, 56, 'Linear 6', 'de-normalise', fond=ACCENT_FOND,
+                   bord=ACCENT, couleur=ACCENT))
+    p.append(fleche(770, y + 28, 800, y + 28))
+    p.append(boite(800, y, 140, 56, 'q1 ... q6', 'joint angles, rad'))
+    p.append(texte(560, y - 14, 'used at inference: one forward pass, no iteration',
+                   12, GRIS_CLAIR, 'middle'))
+
+    # chemin d'entrainement
+    y2 = 250
+    p.append(fleche(870, y + 56, 870, y2))
+    p.append(boite(760, y2, 180, 60, 'differentiable FK', 'DH model in PyTorch'))
+    p.append(fleche(760, y2 + 30, 640, y2 + 30))
+    p.append(boite(470, y2, 170, 60, 'pose reached', 'position p, rotation R'))
+    p.append(fleche(470, y2 + 30, 350, y2 + 30))
+    p.append(boite(40, y2 - 10, 310, 80, '', fond='#ffffff', bord=NOIR))
+    p.append(texte(56, y2 + 14, 'loss', 14, NOIR, gras=True))
+    p.append(texte(56, y2 + 36, "0.1 · ‖q − q_ref‖²   (data term)", 13, GRIS))
+    p.append(texte(56, y2 + 56, "+ ‖p − p*‖² + r_tool² · ‖R − R_ref‖"
+                                '<tspan baseline-shift="sub" font-size="10">F</tspan>'
+                                '<tspan baseline-shift="super" font-size="10">2</tspan>',
+                   13, NOIR))
+    p.append(fleche(330, y2 - 10, 330, y + 60, ACCENT, pointilles=True))
+    p.append(texte(342, y2 - 34, 'backprop through the FK', 12, ACCENT))
+    p.append(texte(342, y2 - 18, 'into the weights', 12, ACCENT))
+
+    p.append(texte(500, H - 22, 'r_tool = 0.05 m turns a rotation error into the tip '
+                                'displacement it causes. R_ref = FK(q_ref).',
+                   11, GRIS_CLAIR, 'middle'))
+    p.append('</svg>')
+
+    out = os.path.join(ASSETS, 'fig_architecture.svg')
+    open(out, 'w', encoding='utf-8').write('\n'.join(p))
+    print(f"  {out}  ({n_params} parametres)")
+
+
+# =====================================================================
+# Figure 4 : nombre de tetes, precision et couverture des branches
+# =====================================================================
+def figure_multihead():
+    import math
+    lignes = []
+    for k in (1, 2, 4, 8):
+        d = json.load(open(os.path.join(_ROOT, 'checkpoints', f'multihypothesis_K{k}.json')))
+        lignes.append((k, d['position_mm'], d['rappel_global']))
+
+    W, H = 900, 356
+    p = [entete(W, H)]
+    p.append(texte(40, 40, 'Multi-head IK on branch-mixed data, no branch labels', 19, NOIR,
+                   gras=True))
+    p.append(texte(40, 63, 'Same cached dataset, seed and 100 epochs for every K. '
+                           'Best-of-K selection by forward kinematics.', 13, GRIS))
+
+    # panneau gauche : erreur de position, echelle log
+    X0, Y0, LARG, HAUT = 70, 110, 330, 160
+    lo, hi = math.log10(0.1), math.log10(20)
+    p.append(texte(X0, Y0 - 14, 'position error (mm, log scale)', 13, NOIR, gras=True))
+    for i, (k, err, _) in enumerate(lignes):
+        x = X0 + i * (LARG / 4) + 14
+        hb = (math.log10(err) - lo) / (hi - lo) * HAUT
+        meilleur = err == min(e for _, e, _ in lignes)
+        p.append(barre(x, Y0 + HAUT - hb, 52, hb, ACCENT if meilleur else '#d1d5db'))
+        p.append(texte(x + 26, Y0 + HAUT - hb - 8, f'{err:.3f}' if err < 1 else f'{err:.2f}',
+                       12, NOIR if meilleur else GRIS, 'middle', gras=meilleur))
+        p.append(texte(x + 26, Y0 + HAUT + 20, f'K = {k}', 12, GRIS, 'middle'))
+
+    # panneau droit : rappel des branches
+    X1 = 500
+    p.append(texte(X1, Y0 - 14, 'branches recovered (of those that exist)', 13, NOIR,
+                   gras=True))
+    for i, (k, _, rap) in enumerate(lignes):
+        x = X1 + i * (LARG / 4) + 14
+        hb = rap * HAUT
+        p.append(barre(x, Y0 + HAUT - hb, 52, max(hb, 1), ACCENT if k == 8 else '#d1d5db'))
+        p.append(texte(x + 26, Y0 + HAUT - hb - 8, f'{rap:.0%}', 12,
+                       NOIR if k == 8 else GRIS, 'middle', gras=(k == 8)))
+        p.append(texte(x + 26, Y0 + HAUT + 20, f'K = {k}', 12, GRIS, 'middle'))
+
+    p.append(texte(40, H - 22, 'Two heads give the best single answer; '
+                               'more heads are needed to recover the solution set.',
+                   12, GRIS))
+    p.append('</svg>')
+
+    out = os.path.join(ASSETS, 'fig_multihead.svg')
+    open(out, 'w', encoding='utf-8').write('\n'.join(p))
+    print(f"  {out}  (K = 1, 2, 4, 8)")
+
+
 if __name__ == "__main__":
     os.makedirs(ASSETS, exist_ok=True)
     print("Figures generees depuis les fichiers de resultats :")
     figure_ablation()
     figure_benchmark()
+    figure_architecture()
+    figure_multihead()

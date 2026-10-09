@@ -29,6 +29,6 @@
 <text x="640.0" y="438" font-size="11" fill="#9ca3af" text-anchor="middle">100 ms</text>
 <line x1="770.0" y1="96" x2="770.0" y2="420" stroke="#e5e7eb" stroke-width="1"/>
 <text x="770.0" y="438" font-size="11" fill="#9ca3af" text-anchor="middle">1000 ms</text>
-<text x="40" y="466" font-size="12" fill="#6b7280" text-anchor="start">The network is not faster than the closed form. It is faster than generic iterative solvers, and it is the only differentiable one.</text>
+<text x="40" y="466" font-size="12" fill="#6b7280" text-anchor="start">The closed form stays 2.3x faster than the network. The network is the only differentiable solver in this set.</text>
 <text x="40" y="484" font-size="11" fill="#9ca3af" text-anchor="start">* IKPY is measured in the URDF frame, which does not coincide with this project's DH table; only the timing is comparable.</text>
 </svg>

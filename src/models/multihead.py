@@ -1,40 +1,34 @@
 """
-Reseau d'IK multi-hypotheses.
+Multi-hypothesis IK network.
 
-Pourquoi ce fichier existe
---------------------------
-L'ablation (experiments/ablation_physics_loss.py) a mesure un echec net : quand
-on entraine un reseau a UNE sortie sur des donnees melangeant les 8 branches de
-solution de la cinematique inverse, il s'effondre a 911 mm en supervise. La
-raison est structurelle, pas un defaut de reglage : un reseau est une FONCTION,
-il rend une valeur par entree, et la moyenne de deux configurations articulaires
-valides n'est solution d'aucune des deux.
+Why this file exists
+--------------------
+The ablation (experiments/ablation_physics_loss.py) showed that a single-output
+network trained on data mixing the IK solution branches collapses to 911 mm when
+supervised. A network is a function, one output per input, and the average of
+two valid joint configurations is a solution to neither.
 
-Le depot contourne ce probleme en imposant une seule famille de solutions dans
-le generateur de donnees. C'est le bon choix d'ingenieur, mais ca ne resout pas
-le probleme : ca l'evite.
+The shipped model avoids the problem by keeping one branch in the data
+generator. This network handles it directly by producing K outputs:
 
-Ce reseau le prend de face. Au lieu d'une sortie, il en produit K :
+                          +-- head 1 --> q(1)
+    (x,y,z) --> trunk ----+-- head 2 --> q(2)
+                          +-- ...
+                          +-- head K --> q(K)
 
-                          ┌─ tete 1 ─> q(1)
-    (x,y,z) ─> tronc ─────┼─ tete 2 ─> q(2)
-                          ├─  ...
-                          └─ tete K ─> q(K)
+and the loss keeps only the best one:
 
-et la perte ne retient que la MEILLEURE :
+    L = min_k  L_phys( q(k) )
 
-    L = min_k  L_physique( q(k) )
+Each head is free to specialise on a different branch and is not penalised for
+missing the others. No branch labels are used.
 
-Une fonction multivaluee redevient ainsi representable : chaque tete est libre
-de se specialiser sur une branche differente, et aucune n'est penalisee pour ne
-pas couvrir les autres.
-
-Le piege : l'effondrement des tetes
------------------------------------
-Avec un min strict, une tete qui gagne tot recoit tout le gradient et les autres
-ne s'entrainent jamais. On utilise donc un min RELACHE : la gagnante recoit le
-poids (1 - eps), les K-1 autres se partagent eps. Elles continuent d'apprendre
-la structure generale sans etre forcees vers la solution de la gagnante.
+Head collapse
+-------------
+With a strict min, the first head to win takes all the gradient and the others
+never train. The min is therefore relaxed: the winner gets weight (1 - eps) and
+the K-1 others share eps, so they keep learning the general structure without
+being pulled onto the winner's solution.
 """
 import torch
 import torch.nn as nn

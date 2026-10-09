@@ -1,3 +1,12 @@
+"""
+Differentiable forward kinematics of the UR5e in PyTorch.
+
+The same Denavit-Hartenberg table as the NumPy kinematics in ur5.py, rewritten
+with tensor operations and batched over the first dimension: six homogeneous
+transforms chained with torch.bmm. Because every step is a torch operation, an
+error on the end-effector pose can be backpropagated to the joint angles, which
+is what the physics-informed loss in src/training/train_true_pinn.py relies on.
+"""
 import torch
 import math
 

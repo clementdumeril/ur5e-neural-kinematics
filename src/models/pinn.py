@@ -1,27 +1,23 @@
 """
-Architecture du reseau d'IK neuronale.
+Neural IK network for the UR5e.
 
-Un perceptron a trois couches cachees, qui prend une position cartesienne et
-rend les six angles articulaires du UR5e.
+A three-hidden-layer MLP that maps a Cartesian target to the six joint angles:
 
     (x, y, z) -> Linear 512 -> SiLU -> Linear 512 -> SiLU
                             -> Linear 512 -> SiLU -> Linear -> (q1 .. q6)
 
-Deux choix meritent d'etre expliques.
+SiLU rather than ReLU
+---------------------
+SiLU(x) = x * sigmoid(x) is smooth. During training the gradient goes through
+the sines and cosines of the differentiable forward kinematics, and a kinked
+activation like ReLU would make that gradient discontinuous.
 
-SiLU plutot que ReLU
---------------------
-SiLU(x) = x * sigmoid(x) est lisse et infiniment derivable. Pendant
-l'entrainement le gradient traverse les sin/cos de la cinematique directe
-differentiable ; une non-linearite cassee comme ReLU y injecterait des a-coups.
-
-La normalisation vit DANS le modele
------------------------------------
-Les entrees sont des metres (~0,3), les sorties des radians (~+-3) : sans
-normalisation le probleme est mal conditionne. En stockant les moyennes et
-ecarts-types comme buffers, ils partent dans le fichier .pth et reviennent avec
-les poids. L'appelant fait model(xyz) et recoit des radians, sans rien savoir
-de la normalisation.
+Normalisation lives inside the model
+------------------------------------
+Inputs are metres (~0.3) and outputs radians (~3), which is badly conditioned
+without normalisation. The means and standard deviations are registered as
+buffers, so they are saved in the .pth file with the weights. A caller writes
+model(xyz) and gets radians back without knowing about the normalisation.
 """
 import torch
 import torch.nn as nn

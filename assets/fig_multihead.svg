@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 356" width="900" height="356" font-family="Helvetica, Arial, sans-serif"><rect x="0" y="0" width="900" height="356" fill="#ffffff"/>
+<text x="40" y="40" font-size="19" fill="#111827" text-anchor="start" font-weight="bold">Multi-head IK on branch-mixed data, no branch labels</text>
+<text x="40" y="63" font-size="13" fill="#6b7280" text-anchor="start">Same cached dataset, seed and 100 epochs for every K. Best-of-K selection by forward kinematics.</text>
+<text x="70" y="96" font-size="13" fill="#111827" text-anchor="start" font-weight="bold">position error (mm, log scale)</text>
+<rect x="84.0" y="134.51684286068593" width="52.0" height="135.48315713931407" rx="3" fill="#d1d5db"/>
+<text x="110.0" y="126.51684286068593" font-size="12" fill="#6b7280" text-anchor="middle">8.88</text>
+<text x="110.0" y="290" font-size="12" fill="#6b7280" text-anchor="middle">K = 1</text>
+<rect x="166.5" y="235.40032587404392" width="52.0" height="34.59967412595607" rx="3" fill="#2563eb"/>
+<text x="192.5" y="227.40032587404392" font-size="12" fill="#111827" text-anchor="middle" font-weight="bold">0.314</text>
+<text x="192.5" y="290" font-size="12" fill="#6b7280" text-anchor="middle">K = 2</text>
+<rect x="249.0" y="231.55628613087515" width="52.0" height="38.44371386912486" rx="3" fill="#d1d5db"/>
+<text x="275.0" y="223.55628613087515" font-size="12" fill="#6b7280" text-anchor="middle">0.357</text>
+<text x="275.0" y="290" font-size="12" fill="#6b7280" text-anchor="middle">K = 4</text>
+<rect x="331.5" y="225.33996609730687" width="52.0" height="44.66003390269313" rx="3" fill="#d1d5db"/>
+<text x="357.5" y="217.33996609730687" font-size="12" fill="#6b7280" text-anchor="middle">0.439</text>
+<text x="357.5" y="290" font-size="12" fill="#6b7280" text-anchor="middle">K = 8</text>
+<text x="500" y="96" font-size="13" fill="#111827" text-anchor="start" font-weight="bold">branches recovered (of those that exist)</text>
+<rect x="514.0" y="251.05599999999998" width="52.0" height="18.944000000000003" rx="3" fill="#d1d5db"/>
+<text x="540.0" y="243.05599999999998" font-size="12" fill="#6b7280" text-anchor="middle">12%</text>
+<text x="540.0" y="290" font-size="12" fill="#6b7280" text-anchor="middle">K = 1</text>
+<rect x="596.5" y="211.344" width="52.0" height="58.656" rx="3" fill="#d1d5db"/>
+<text x="622.5" y="203.344" font-size="12" fill="#6b7280" text-anchor="middle">37%</text>
+<text x="622.5" y="290" font-size="12" fill="#6b7280" text-anchor="middle">K = 2</text>
+<rect x="679.0" y="138.44799999999998" width="52.0" height="131.55200000000002" rx="3" fill="#d1d5db"/>
+<text x="705.0" y="130.44799999999998" font-size="12" fill="#6b7280" text-anchor="middle">82%</text>
+<text x="705.0" y="290" font-size="12" fill="#6b7280" text-anchor="middle">K = 4</text>
+<rect x="761.5" y="131.2" width="52.0" height="138.8" rx="3" fill="#2563eb"/>
+<text x="787.5" y="123.19999999999999" font-size="12" fill="#111827" text-anchor="middle" font-weight="bold">87%</text>
+<text x="787.5" y="290" font-size="12" fill="#6b7280" text-anchor="middle">K = 8</text>
+<text x="40" y="334" font-size="12" fill="#6b7280" text-anchor="start">Two heads give the best single answer; more heads are needed to recover the solution set.</text>
+</svg>

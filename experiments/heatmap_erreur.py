@@ -142,16 +142,16 @@ def tracer(XX, YY, erreur, atteignable):
     cb.set_label('position error (mm, log scale)')
 
     fig.text(0.09, 0.115,
-             'Dashed white line: reachability limit of the analytic solver. '
-             'Hatched: no solution exists there, so the error has no physical meaning.',
+             'Dashed white line: reachability limit of the closed-form solver. '
+             'Hatched: no IK solution exists.',
              fontsize=10, color='#374151', va='top')
     fig.text(0.09, 0.078,
              'Inside the blue box: median 0.176 mm. Reachable but outside it: '
              '14.3 mm, 81x worse.',
              fontsize=10, color='#374151', va='top')
     fig.text(0.09, 0.041,
-             'And it never reports leaving its domain: past the reachability limit it '
-             'still returns six plausible angles, up to 1.78 m wrong.',
+             'Past that limit the network still returns six angles, up to 1.78 m off, '
+             'with no warning.',
              fontsize=10, color='#374151', va='top')
 
     out = os.path.join(_ROOT, 'assets', 'fig_workspace_error.png')

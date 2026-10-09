@@ -1,31 +1,28 @@
 """
-Jacobien geometrique du UR5e, ecrit depuis les principes.
+Geometric Jacobian of the UR5e, built from the geometry.
 
-Le Jacobien relie les vitesses articulaires a la vitesse de l'effecteur :
+The Jacobian maps joint velocities to end-effector velocity:
 
-    [ v ]           [ v ]   vitesse lineaire  (m/s)
-    [   ] = J(q) q̇  [ w ]   vitesse angulaire (rad/s)
-    [ w ]
+    [ v ]           v   linear velocity  (m/s)
+    [   ] = J(q) q̇
+    [ w ]           w   angular velocity (rad/s)
 
-Pour une articulation ROTOIDE i, la contribution se lit directement sur la
-geometrie, sans aucune derivation symbolique :
+For a revolute joint i, its column reads directly off the geometry, with no
+symbolic differentiation:
 
-    J_v,i = z_{i-1} x (p_e - p_{i-1})      partie lineaire
-    J_w,i = z_{i-1}                        partie angulaire
+    J_v,i = z_{i-1} x (p_e - p_{i-1})      linear part
+    J_w,i = z_{i-1}                        angular part
 
-ou z_{i-1} est l'axe de rotation de l'articulation i exprime dans le repere de
-base, p_{i-1} l'origine de son repere, et p_e la position de l'effecteur.
-
-L'intuition : faire tourner l'articulation i fait tourner tout ce qui est en
-aval autour de l'axe z_{i-1}. La main, situee au bras de levier (p_e - p_{i-1}),
-part donc en vitesse selon le produit vectoriel.
+where z_{i-1} is the joint axis in the base frame, p_{i-1} the origin of its
+frame and p_e the end-effector position. Turning joint i rotates everything
+downstream about z_{i-1}; the hand, at lever arm (p_e - p_{i-1}), moves with
+the cross product.
 
 Convention
 ----------
-Denavit-Hartenberg standard, exactement la table de ur5.py et de
-ur5_pytorch_fk.py. Si ces trois fichiers divergeaient, le Jacobien decrirait un
-robot qui n'est pas celui de la simulation -- d'ou la verification par
-differences finies dans verifier_jacobien().
+Standard Denavit-Hartenberg, the same table as ur5.py and ur5_pytorch_fk.py.
+If the three diverged, the Jacobian would describe a different robot from the
+one simulated, hence the finite-difference check in verifier_jacobien().
 """
 import numpy as np
 

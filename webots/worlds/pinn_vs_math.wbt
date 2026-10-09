@@ -108,7 +108,7 @@ DEF BLUE_TRAY_PINN Solid {
 }
 
 # ==========================================
-# POSTE 2 : MATH IKPY (ROBOT 2) - Y = 1.5
+# POSTE 2 : IK ANALYTIQUE (ROBOT 2) - Y = 1.5
 # ==========================================
 DEF UR5E_MATH UR5e {
   name "UR5e_MATH"
