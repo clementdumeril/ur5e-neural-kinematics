@@ -9,7 +9,7 @@ Neural inverse kinematics for a UR5e arm, trained through a differentiable model
 
 *The comparison scene [`pinn_vs_math.wbt`](webots/worlds/pinn_vs_math.wbt): one arm solves its IK with the network (red cube), the other with the closed-form solver (green cube).*
 
-I built this in August and September 2026 on top of an open-source Webots pick-and-place scene. The arm finds a red cube with its camera, turns the cube position into six joint angles, grasps the cube and drops it in a tray. I wanted to know whether a small network could do the IK step inside that loop, and what training it through the robot's kinematics buys over plain regression on joint angles.
+I built this as a personal project in August and September 2026, on top of an open-source Webots pick-and-place scene. The arm finds a red cube with its camera, turns the cube position into six joint angles, grasps the cube and drops it in a tray. I wanted to know whether a small network could do the IK step inside that loop, and what training it through the robot's kinematics buys over plain regression on joint angles.
 
 The network solves position IK with the tool held pointing down (R³ → R⁶). It takes no orientation as input, so it is not full 6-DoF pose IK.
 
