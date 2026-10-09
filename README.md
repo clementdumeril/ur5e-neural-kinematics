@@ -43,19 +43,18 @@ Code: [`ur5_pytorch_fk.py`](src/kinematics/ur5_pytorch_fk.py). The UR5e DH chain
 
 ### The network
 
-Code: [`pinn.py`](src/models/pinn.py), class `PINN6DOF`. An MLP from (x, y, z) to six joint angles: three hidden layers of 512, 530,438 parameters. SiLU activations, chosen because they are smooth and the gradient passes through the sines and cosines of the FK; I did not compare against ReLU.
+Code: [`pinn.py`](src/models/pinn.py), class `PINN6DOF`. The MLP in the figure above, 530,438 parameters. SiLU because it is smooth and the gradient passes through the sines and cosines of the FK; I did not compare against ReLU.
 
 ### The loss
 
-Code: [`train_true_pinn.py`](src/training/train_true_pinn.py). The predicted angles go through the differentiable FK, and the error is computed on the pose they reach:
+Code: [`train_true_pinn.py`](src/training/train_true_pinn.py). The error is computed on the pose the predicted angles reach, as in the figure. The data term keeps the network on one IK branch; the FK terms take the error from 0.238 to 0.187 mm. Adam, 1e-3 decayed to 2e-5, batch 256, 100 epochs.
+
+<details>
+<summary>The loss in full, and why it is built this way</summary>
 
 $$L = 0.1 \cdot \lVert q - q_{ref} \rVert^2 + \lVert p - p^{*} \rVert^2 + r_{tool}^2 \cdot \lVert R - R_{ref} \rVert_F^2$$
 
-The data term alone already reaches 0.238 mm and keeps the network on one IK branch; adding the FK terms takes it to 0.187 mm. $r_{tool} = 0.05$ m turns a rotation error into the tip displacement it causes (1° ≈ 0.9 mm), so both FK terms are in m². Adam, 1e-3 decayed to 2e-5, batch 256, 100 epochs.
-
-<details>
-<summary>Why R_ref = FK(q_ref) and the Frobenius norm</summary>
-
+- $r_{tool} = 0.05$ m turns a rotation error into the tip displacement it causes (1° ≈ 0.9 mm), so both FK terms are in m².
 - Comparing against $FK(q_{ref})$ instead of a matrix rebuilt from Euler angles puts both sides through the same kinematics, so no angle convention can create a fake error. Without an orientation term at all, turning q6 by 180° flips the gripper without moving the point, and the loss cannot see it.
 - The geodesic angle involves an arccos whose gradient blows up near zero error, exactly where training has to converge. The Frobenius norm has no such problem.
 </details>
@@ -94,25 +93,43 @@ In Webots the network solves every move to the cube and to the tray. The camera 
 
 ### Ablation of the loss
 
-Same seed, data, architecture and schedule; only the loss changes. On single-branch data the FK terms take the error from 0.238 to 0.187 mm. (0.187 mm is the ablation's own run on its shared dataset; the shipped model, trained separately by `train_true_pinn.py`, reaches 0.185 mm.) On branch-mixed data a supervised network collapses to 911 mm, the average of several valid configurations, and the FK terms alone only bring it to 3.68 mm with 71.6° of orientation error.
+On single-branch data, the FK terms take the error from 0.238 to 0.187 mm.
 
 ![Effect of the physics term](assets/fig_ablation.svg)
 
+<details>
+<summary>Protocol, and the branch-mixed case</summary>
+
+Same seed, data, architecture and schedule; only the loss changes. 0.187 mm is the ablation's own run on its shared dataset; the shipped model, trained separately by `train_true_pinn.py`, reaches 0.185 mm. On branch-mixed data a supervised network collapses to 911 mm, the average of several valid configurations, and the FK terms alone only bring it to 3.68 mm with 71.6° of orientation error. Full 2 × 3 table in [`docs/experiments.md`](docs/experiments.md#1-physics-term-ablation).
+</details>
+
 ### Multi-head sweep
 
-On that mixed data, two heads reach 0.314 mm and 0.202° with no branch labels; more heads recover more of the solution set (87% at K = 8) but are not more accurate. K = 1 (8.88 mm) has no data term, unlike the 3.68 mm net of the ablation. Against the shipped model, two heads are 1.7× less accurate and about 9× slower (4.9 against 0.54 ms).
+On branch-mixed data, two heads reach 0.314 mm and 0.202° with no branch labels.
 
 ![Multi-head sweep over K](assets/fig_multihead.svg)
 
+<details>
+<summary>Coverage, the K = 1 control, and the cost</summary>
+
+More heads recover more of the solution set (87% at K = 8) but are not more accurate. K = 1 (8.88 mm) has no data term, unlike the 3.68 mm net of the ablation. Against the shipped model, two heads are 1.7× less accurate and about 9× slower (4.9 against 0.54 ms). Per-branch recall in [`docs/experiments.md`](docs/experiments.md#2-multi-head-ik-for-the-multi-valued-problem).
+</details>
+
 ### Error on the simulated robot
 
-`mesurer_erreur_pinn()` sends the arm to the same target with the closed form and with the network and compares the poses reached in the physics engine, not the network's own FK. It gave 0.30 mm at the grasp point on the previous model, before the orientation term; the current model has not been re-measured yet.
+0.30 mm at the grasp point, on the previous model; the current model has not been re-measured in Webots yet.
+
+<details>
+<summary>How it is measured</summary>
+
+`mesurer_erreur_pinn()` sends the arm to the same target with the closed form and with the network and compares the poses reached in the physics engine, not the network's own FK. The measurement predates the orientation term in the loss.
+</details>
 
 ### Timing and the Jacobian
 
-Timings discard 200 warm-up calls and run on one thread. The Jacobian matches a central-difference derivative of the FK to 3.2 × 10⁻¹⁰ over 200 random configurations.
+Timings discard 200 warm-up calls and run on one thread. The Jacobian matches a central-difference derivative of the FK to 3.2 × 10⁻¹⁰.
 
-I removed three claims from earlier versions of this README after measuring them; [`docs/experiments.md`](docs/experiments.md) lists them, with the full tables, the continuity test and the DLS results.
+I removed three claims from earlier versions of this README after measuring them; [`docs/experiments.md`](docs/experiments.md#7-claims-i-withdrew) lists them.
 
 ## Limitations
 
