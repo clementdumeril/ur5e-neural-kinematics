@@ -64,10 +64,10 @@ def load_vision_model(weights_path):
             return load_model(weights_path, compile=False), None
         except Exception as e:
             err = e
-            print(f"[Vision] {mod} n'a pas pu lire le modele ({type(e).__name__}), "
-                  f"essai du backend suivant...")
+            print(f"[Vision] {mod} could not read the model ({type(e).__name__}), "
+                  f"trying the next backend...")
     if not tried:
-        print("[Vision] Ni tf_keras ni keras ne sont installes.")
+        print("[Vision] Neither tf_keras nor keras is installed.")
     return None, err
 
 import matplotlib.pyplot as plt
@@ -475,23 +475,23 @@ class UR5:
         if weights is None:
             weights = os.path.join(cv_dir, "vgg16.h5")
         if not os.path.exists(weights):
-            print(f"[Vision] Poids introuvables : {weights}")
-            print("[Vision] Repli sur la position donnee par le superviseur Webots.")
+            print(f"[Vision] Weights not found: {weights}")
+            print("[Vision] Falling back to the position given by the Webots supervisor.")
             self._model = None
             return None
 
-        print("[Vision] Chargement du modele (import TensorFlow, ~30 s)...")
+        print("[Vision] Loading the model (TensorFlow import, ~30 s)...")
         self._model, err = load_vision_model(weights)
         if self._model is None:
-            print(f"[Vision] Echec : {err}")
-            print("[Vision] Repli sur la position donnee par le superviseur Webots.")
+            print(f"[Vision] Failed: {err}")
+            print("[Vision] Falling back to the position given by the Webots supervisor.")
         else:
-            print("[Vision] Modele charge : detection du cube active.")
+            print("[Vision] Model loaded: cube detection enabled.")
         return self._model
 
     @model.setter
     def model(self, value):
-        """Permet de forcer la desactivation de la vision : `ur5.model = None`."""
+        """Lets a caller disable vision: `ur5.model = None`."""
         self._model = value
 
     def __init__(self):
@@ -529,7 +529,7 @@ class UR5:
                 else:
                     print("[IK] Neural IK model not found:", pinn_path)
             except Exception as e:
-                print("Erreur chargement PINN:", e)
+                print("[IK] Could not load the neural IK model:", e)
 
         self.init_handles()
 
@@ -944,22 +944,22 @@ class UR5:
             print("Erro posicional: ", pos_err, " mm")
 
     def bilan_solveurs(self):
-        """Recapitule qui a resolu la cinematique inverse, et combien de fois."""
+        """Summarise which solver handled the inverse kinematics, and how often."""
         t = self.n_pinn + self.n_analytique
         print()
-        print("=== BILAN DES SOLVEURS ===")
+        print("=== IK SOLVER SUMMARY ===")
         if t == 0:
-            print("  aucun deplacement cartesien effectue")
+            print("  no Cartesian move performed")
             return
-        print(f"  PINN (reseau)   : {self.n_pinn:2d} / {t}  "
+        print(f"  neural IK       : {self.n_pinn:2d} / {t}  "
               f"({100 * self.n_pinn / t:.0f} %)")
-        print(f"  IK analytique   : {self.n_analytique:2d} / {t}  "
+        print(f"  closed-form IK  : {self.n_analytique:2d} / {t}  "
               f"({100 * self.n_analytique / t:.0f} %)")
         if self.n_pinn == 0:
-            print("  -> le PINN n'a JAMAIS ete appele.")
+            print("  -> the neural IK was NEVER called.")
         elif self.n_analytique:
-            print("  -> les deplacements analytiques sont les poses de lecture,")
-            print("     volontairement exclues du PINN (voir le controleur).")
+            print("  -> the closed-form moves are the camera reading pose,")
+            print("     kept off the network on purpose (see the controller).")
 
     def actuate_gripper(self, close=0, duration=2):
         """
@@ -1030,9 +1030,9 @@ class UR5:
         path = os.path.join(_ROOT, "data", "calibration.json")
         if not os.path.exists(path):
             raise FileNotFoundError(
-                "Calibration camera absente : " + path +
-                " -- lancer le monde my_first_simulation_datagen.wbt (controleur "
-                "data_collector) pour la generer, puis reentrainer le VGG16.")
+                "Camera calibration missing: " + path +
+                " -- run the world my_first_simulation_datagen.wbt (controller "
+                "data_collector) to generate it.")
         import json
         with open(path) as f:
             self._calib = json.load(f)
@@ -1054,7 +1054,7 @@ class UR5:
         """
         if resize is None:
             raise RuntimeError(
-                "scikit-image est requis pour la vision : pip install scikit-image")
+                "scikit-image is required for the CNN vision mode: pip install scikit-image")
 
         calib = self.vision_calibration()
         size = calib["image_size"]
@@ -1116,9 +1116,9 @@ class UR5:
         z = calib["visible_zone_world"]
         if not (z["x_min"] - 0.05 <= xreal <= z["x_max"] + 0.05 and
                 z["y_min"] - 0.05 <= yreal <= z["y_max"] + 0.05):
-            print(f"[Vision] ATTENTION : prediction ({xreal:.3f}, {yreal:.3f}) hors "
-                  f"de la zone calibree x[{z['x_min']:.2f},{z['x_max']:.2f}] "
-                  f"y[{z['y_min']:.2f},{z['y_max']:.2f}] -- resultat peu fiable.")
+            print(f"[Vision] WARNING: prediction ({xreal:.3f}, {yreal:.3f}) outside "
+                  f"the calibrated zone x[{z['x_min']:.2f},{z['x_max']:.2f}] "
+                  f"y[{z['y_min']:.2f},{z['y_max']:.2f}] -- unreliable.")
 
         # Monde -> repere robot
         R0_world = np.array(
@@ -1140,9 +1140,9 @@ class UR5:
             truth = self.get_bottle_frame()
             if truth is not None:
                 err = np.linalg.norm(truth[:2, 3] - th_bottle_0[:2, 3]) * 1000
-                print(f"[Vision] reel   : {np.round(truth[:2, 3], 4)}")
-                print(f"[Vision] predit : {np.round(th_bottle_0[:2, 3], 4)}"
-                      f"   erreur {err:.1f} mm")
+                print(f"[Vision] true      : {np.round(truth[:2, 3], 4)}")
+                print(f"[Vision] predicted : {np.round(th_bottle_0[:2, 3], 4)}"
+                      f"   error {err:.1f} mm")
             plt.imshow(img)
             plt.scatter(u * 512 / size, v * 512 / size, c="r", s=50)
             plt.draw()
@@ -1185,8 +1185,8 @@ class UR5:
 
         n = int(mask.sum())
         if n < 20:
-            print("[Vision] Aucun pixel rouge detecte : cube hors du champ de la "
-                  "camera, ou masque par le bras.")
+            print("[Vision] No red pixel detected: cube outside the camera's "
+                  "field, or hidden by the arm.")
             return None
 
         ys, xs = np.nonzero(mask)
@@ -1195,8 +1195,8 @@ class UR5:
         scale = float(size) / img.shape[0]
         u, v = float(xs.mean()) * scale, float(ys.mean()) * scale
         if verbose:
-            print(f"[Vision] Cube detecte par couleur : {n} pixels rouges, "
-                  f"centroide ({u:.1f}, {v:.1f}) px")
+            print(f"[Vision] Cube detected by colour: {n} red pixels, "
+                  f"centroid ({u:.1f}, {v:.1f}) px")
         return self.pixel_to_robot(u, v, show_img=show_img, img=img)
 
     def camera_offset(self):
@@ -1218,8 +1218,8 @@ class UR5:
         T = calib.get("tool_to_camera")
         if T is None:
             raise KeyError(
-                "'tool_to_camera' absent de calibration.json : relancer le monde "
-                "my_first_simulation_datagen.wbt pour le mesurer.")
+                "'tool_to_camera' missing from calibration.json: run the world "
+                "my_first_simulation_datagen.wbt to measure it.")
         return np.array(T)
 
     def move_camera_to(self, cam_pos, rot, euler="XYZ", **kwargs):
@@ -1248,8 +1248,8 @@ class UR5:
         T_tc = self.camera_offset()
         R = build_matrix([0.0, 0.0, 0.0], rot, euler=euler)[:3, :3]
         tool_pos = np.asarray(cam_pos, dtype=float) - R @ T_tc[:3, 3]
-        print(f"[Camera] cible objectif {np.round(cam_pos, 3)} "
-              f"-> outil commande {np.round(tool_pos, 3)}")
+        print(f"[Camera] camera target {np.round(cam_pos, 3)} "
+              f"-> tool command {np.round(tool_pos, 3)}")
         self.move_to_pose(list(tool_pos), rot, euler=euler, **kwargs)
         return tool_pos
 

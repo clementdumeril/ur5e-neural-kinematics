@@ -50,8 +50,8 @@ mode = "pinn"
 if len(sys.argv) > 1 and sys.argv[1].strip():
     mode = sys.argv[1].strip().lower()
 
-print(f"[Mode] Solveur de cinematique inverse : "
-      f"{'PINN (reseau de neurones)' if mode == 'pinn' else 'IK analytique'}")
+print(f"[Mode] IK solver: "
+      f"{'neural IK' if mode == 'pinn' else 'closed-form IK'}")
 
 # Affichage du titre selon le robot
 if mode == "pinn":
@@ -79,16 +79,16 @@ for _a, _b in NOMS_DOIGTS:
     _f1, _f2 = ur5.supervisor.getDevice(_a), ur5.supervisor.getDevice(_b)
     if _f1 is not None and _f2 is not None:
         panda_f1, panda_f2 = _f1, _f2
-        print(f"[Pince] Moteurs trouves : {_a} / {_b}")
+        print(f"[Gripper] Motors found: {_a} / {_b}")
         break
 
 if panda_f1 is None:
-    print("[Pince] ERREUR : aucun moteur de pince trouve.")
-    print(f"[Pince] Noms essayes : {NOMS_DOIGTS}")
-    print("[Pince] La pince ne se fermera pas -- la saisie echouera forcement.")
+    print("[Gripper] ERROR: no gripper motor found.")
+    print(f"[Gripper] Names tried: {NOMS_DOIGTS}")
+    print("[Gripper] The gripper will not close -- the grasp will fail.")
 panda_s1 = panda_s2 = None
 if panda_f1 is None:
-    print("[Pince] La pince ne se fermera pas -- la saisie echouera forcement.")
+    print("[Gripper] The gripper will not close -- the grasp will fail.")
 else:
     panda_f1.setPosition(FINGER_OPEN_INIT)
     panda_f2.setPosition(FINGER_OPEN_INIT)
@@ -107,9 +107,9 @@ else:
                 else:
                     panda_s2 = _s
         except Exception as _e:
-            print(f"[Pince] Capteur indisponible : {_e}")
-    print(f"[Pince] Capteurs de doigts : "
-          f"{'actifs' if panda_s1 and panda_s2 else 'INDISPONIBLES'}")
+            print(f"[Gripper] Sensor unavailable: {_e}")
+    print(f"[Gripper] Finger sensors: "
+          f"{'active' if panda_s1 and panda_s2 else 'UNAVAILABLE'}")
 
 
 # --- Hauteurs de la sequence (repere robot, en metres) -------------------
@@ -169,9 +169,9 @@ def diagnostic_hauteur():
     contente donc de rapporter, et c'est verifier_saisie() qui tranche.
     """
     cz = hauteur_cube()
-    print(f"[Hauteur] commande (bout chaine DH) : z = {GRASP_Z:+.4f}")
+    print(f"[Height] command (end of DH chain) : z = {GRASP_Z:+.4f}")
     if cz is not None:
-        print(f"[Hauteur] centre du cube           : z = {cz:+.4f}")
+        print(f"[Height] cube centre                 : z = {cz:+.4f}")
 
 
 def verifier_saisie(z_avant):
@@ -183,20 +183,20 @@ def verifier_saisie(z_avant):
     """
     z_apres = hauteur_cube()
     if z_avant is None or z_apres is None:
-        print("[Saisie] Position du cube inaccessible, verification impossible.")
+        print("[Grasp] Cube position unavailable, cannot check the grasp.")
         return
     monte = z_apres - z_avant
-    print(f"[Saisie] cube : z {z_avant:+.4f} -> {z_apres:+.4f}  "
+    print(f"[Grasp] cube: z {z_avant:+.4f} -> {z_apres:+.4f}  "
           f"({1000 * monte:+.0f} mm)")
     if monte > 0.05:
-        print("[Saisie] REUSSIE : le cube a suivi le bras.")
+        print("[Grasp] SUCCESS: the cube followed the arm.")
     elif monte > 0.005:
-        print("[Saisie] PARTIELLE : le cube a bouge mais glisse. "
-              f"Essayer GRASP_Z = {GRASP_Z - 0.005:.4f}")
+        print("[Grasp] PARTIAL: the cube moved but slipped. "
+              f"Try GRASP_Z = {GRASP_Z - 0.005:.4f}")
     else:
-        print("[Saisie] ECHOUEE : le cube n'a pas ete souleve. "
-              f"Essayer GRASP_Z = {GRASP_Z - 0.010:.4f} (pince trop haute) "
-              f"ou {GRASP_Z + 0.010:.4f} (pince trop basse, elle pousse le cube)")
+        print("[Grasp] FAILED: the cube was not lifted. "
+              f"Try GRASP_Z = {GRASP_Z - 0.010:.4f} (gripper too high) "
+              f"or {GRASP_Z + 0.010:.4f} (gripper too low, it pushes the cube)")
 
 
 def calibrer_hauteur_saisie(cx, cy):
@@ -213,13 +213,13 @@ def calibrer_hauteur_saisie(cx, cy):
     """
     node = ur5.bottle
     if node is None:
-        print("[Calib] Cube introuvable, calibration impossible.")
+        print("[Calib] Cube not found, cannot calibrate.")
         return None
     field = node.getField("translation")
     depart = field.getSFVec3f()
 
     print()
-    print("=== CALIBRATION DE LA HAUTEUR DE SAISIE ===")
+    print("=== GRASP HEIGHT CALIBRATION ===")
     for z in HAUTEURS_A_TESTER:
         # remettre le cube exactement a sa place
         field.setSFVec3f(depart)
@@ -237,11 +237,11 @@ def calibrer_hauteur_saisie(cx, cy):
 
         monte = (z1 - z0) if (z0 is not None and z1 is not None) else 0.0
         ok = monte > 0.05
-        print(f"  z = {z:+.3f}  ->  cube monte de {1000 * monte:+6.0f} mm   "
-              f"{'REUSSI' if ok else 'echec'}")
+        print(f"  z = {z:+.3f}  ->  cube lifted by {1000 * monte:+6.0f} mm   "
+              f"{'OK' if ok else 'failed'}")
         if ok:
-            print(f"  -> hauteur retenue : GRASP_Z = {z:.3f}")
-            print(f"     (recopier dans GRASP_Z et mettre CALIBRER_HAUTEUR = False)")
+            print(f"  -> selected height: GRASP_Z = {z:.3f}")
+            print(f"     (copy it into GRASP_Z and set CALIBRER_HAUTEUR = False)")
             field.setSFVec3f(depart)
             node.resetPhysics()
             actuate_panda(close=False)
@@ -249,8 +249,8 @@ def calibrer_hauteur_saisie(cx, cy):
                 ur5.supervisor.step(ur5.timestep)
             return z
 
-    print("  AUCUNE hauteur n'a fonctionne.")
-    print("  -> elargir HAUTEURS_A_TESTER, ou verifier l'ouverture de la pince.")
+    print("  NO height worked.")
+    print("  -> widen HAUTEURS_A_TESTER, or check the gripper opening.")
     field.setSFVec3f(depart)
     node.resetPhysics()
     return None
@@ -282,9 +282,9 @@ def mesurer_erreur_pinn(cibles):
     controle.
     """
     print()
-    print("=== ERREUR REELLE DU PINN (mesuree dans Webots) ===")
+    print("=== NEURAL IK ERROR MEASURED IN WEBOTS ===")
     if pose_reelle() is None:
-        print("  DEF frame6 introuvable, mesure impossible.")
+        print("  DEF frame6 not found, cannot measure.")
         return
 
     neutre = [0, -PI / 3, PI / 2, -PI / 6, -PI / 2, 0]
@@ -313,16 +313,16 @@ def mesurer_erreur_pinn(cibles):
         rep = np.linalg.norm(p_repet - p_math) * 1000
         resultats.append((nom, cible, err, rep))
         print(f"  {nom:18s} {str(tuple(round(v, 3) for v in cible)):24s} "
-              f"erreur {err:6.2f} mm   (repetabilite {rep:.2f} mm)")
+              f"error {err:6.2f} mm   (repeatability {rep:.2f} mm)")
 
     if resultats:
         e = np.array([r[2] for r in resultats])
         r = np.array([r[3] for r in resultats])
         print()
-        print(f"  erreur PINN     : moyenne {e.mean():.2f} mm, max {e.max():.2f} mm")
-        print(f"  repetabilite    : moyenne {r.mean():.2f} mm")
-        print("  -> la repetabilite est le plancher : une erreur du meme ordre")
-        print("     ne serait pas attribuable au reseau.")
+        print(f"  neural IK error : mean {e.mean():.2f} mm, max {e.max():.2f} mm")
+        print(f"  repeatability   : mean {r.mean():.2f} mm")
+        print("  -> repeatability is the floor: an error of the same order")
+        print("     cannot be attributed to the network.")
     # Les 12 deplacements de la campagne ne font pas partie du scenario :
     # on remet les compteurs a zero pour que le bilan final reste lisible.
     ur5.n_pinn = 0
@@ -350,15 +350,15 @@ def actuate_panda(close=False):
 
     if panda_s1 is not None and panda_s2 is not None:
         o1, o2 = panda_s1.getValue(), panda_s2.getValue()
-        etat = "fermeture" if close else "ouverture"
-        print(f"[Pince] {etat} -> consigne {target:.3f}, doigts a "
-              f"{o1:.4f} / {o2:.4f} m  (ecartement total {1000 * (o1 + o2):.0f} mm)")
+        etat = "closing" if close else "opening"
+        print(f"[Gripper] {etat} -> setpoint {target:.3f}, fingers at "
+              f"{o1:.4f} / {o2:.4f} m  (total opening {1000 * (o1 + o2):.0f} mm)")
         if close:
             if o1 + o2 > 0.07:
-                print("[Pince] Les doigts n'ont PAS bouge -> moteur non pilote.")
+                print("[Gripper] The fingers did NOT move -> motor not driven.")
             elif o1 + o2 < 0.005:
-                print("[Pince] Les doigts se sont fermes A VIDE -> le cube "
-                      "n'etait pas entre eux.")
+                print("[Gripper] The fingers closed on NOTHING -> the cube "
+                      "was not between them.")
             else:
                 # Les capteurs donnent la COURSE de chaque doigt, pas l'ecart
                 # entre leurs faces internes : celles-ci sont en retrait
@@ -366,8 +366,8 @@ def actuate_panda(close=False):
                 # avec une somme de course de 65 mm). On retranche donc cette
                 # epaisseur pour annoncer une largeur d'objet exploitable.
                 largeur = 1000 * (o1 + o2) - 2 * EPAISSEUR_DOIGT_MM
-                print(f"[Pince] Les doigts serrent un objet de "
-                      f"{largeur:.0f} mm (course totale {1000 * (o1 + o2):.0f} mm).")
+                print(f"[Gripper] The fingers hold an object of "
+                      f"{largeur:.0f} mm (total travel {1000 * (o1 + o2):.0f} mm).")
 
 # ---------------------------------------------------------
 # POSE DE LECTURE CAMERA
@@ -384,12 +384,12 @@ if VISION_MODE in ("color", "cnn"):
         READ_POS = _c['reading_pose']['position']
         READ_ROT = _c['reading_pose']['orientation']
         _z = _c['visible_zone_world']
-        print(f"[Vision] Pose de lecture calibree : {[round(v, 3) for v in READ_POS]}")
-        print(f"[Vision] Zone visible monde : x[{_z['x_min']:.2f},{_z['x_max']:.2f}] "
+        print(f"[Vision] Calibrated reading pose: {[round(v, 3) for v in READ_POS]}")
+        print(f"[Vision] Visible zone (world): x[{_z['x_min']:.2f},{_z['x_max']:.2f}] "
               f"y[{_z['y_min']:.2f},{_z['y_max']:.2f}]")
     except FileNotFoundError as e:
         print(f"[Vision] {e}")
-        print("[Vision] Repli sur le superviseur.")
+        print("[Vision] Falling back to the supervisor position.")
         VISION_MODE = "supervisor"
 
 # Position initiale stable
@@ -423,13 +423,13 @@ if VISION_MODE in ("color", "cnn"):
         else:
             found = ur5.predict_bottle_position() if ur5.model is not None else None
             if found is None:
-                print("[Vision] Modele VGG16 indisponible.")
+                print("[Vision] VGG16 model unavailable.")
         if found is not None:
             cx, cy = found
-            print(f"📷 Cube localise par la camera ({VISION_MODE}) : "
+            print(f"[Vision] Cube located by the camera ({VISION_MODE}): "
                   f"({cx:.3f}, {cy:.3f})")
     except Exception as e:
-        print(f"[Vision] Echec ({type(e).__name__}: {e}) -> repli superviseur.")
+        print(f"[Vision] Failed ({type(e).__name__}: {e}) -> falling back to the supervisor.")
 
 # 2. Sinon, chercher l'objet selon le monde (mono-robot ou duo-robot)
 if cx is None:
@@ -457,16 +457,16 @@ if tray_frame is not None:
 else:
     tx, ty = cx - 0.4, cy
 
-print(f"Cube: ({cx:.3f}, {cy:.3f}) | Zone bleue: ({tx:.3f}, {ty:.3f})")
-print("Lancement pick & place...")
+print(f"Cube: ({cx:.3f}, {cy:.3f}) | Tray: ({tx:.3f}, {ty:.3f})")
+print("Starting pick and place...")
 
 # ============================================================
 # PICK - Saisie top-down avec PandaHand
 # ============================================================
 if mode == "pinn":
-    ur5.use_pinn = True  # On active ton IA PINN
+    ur5.use_pinn = True   # neural IK
 else:
-    ur5.use_pinn = False # On force les maths
+    ur5.use_pinn = False  # closed-form IK
 
 if CALIBRER_HAUTEUR:
     trouve = calibrer_hauteur_saisie(cx, cy)
@@ -521,11 +521,11 @@ if MESURER_ERREUR_PINN and ur5.pinn_model is not None:
         for _ in range(20):
             ur5.supervisor.step(ur5.timestep)
     mesurer_erreur_pinn([
-        ("approche cube", (cx, cy, APPROACH_Z)),
-        ("saisie cube", (cx, cy, GRASP_Z)),
-        ("approche bac", (tx, ty, APPROACH_Z)),
-        ("depose bac", (tx, ty, RELEASE_Z)),
+        ("cube approach", (cx, cy, APPROACH_Z)),
+        ("cube grasp", (cx, cy, GRASP_Z)),
+        ("tray approach", (tx, ty, APPROACH_Z)),
+        ("tray drop", (tx, ty, RELEASE_Z)),
     ])
 
-print("Termine !")
+print("Done.")
 

@@ -29,7 +29,7 @@ Stack: PyTorch, Webots, DH kinematics / geometric Jacobian / damped least square
 
 ![IK solve time for six solvers](assets/fig_benchmark.svg)
 
-The closed form stays 2.3× faster; the network is the only differentiable solver here.
+*Median over 200 targets, one thread, 200 warm-up calls discarded; IKPY timed in its own URDF frame.*
 
 ## What I built
 
@@ -87,20 +87,20 @@ Code: [`move_to_config`](src/control/ur5.py#L728) and the neural IK bridge in [`
 
 ![Deployment pipeline in Webots](assets/workflow.svg)
 
-In Webots the network solves every move to the cube and to the tray. The camera reading pose (x = −0.10 m) is outside the training box, where the network would be 3.2 mm off and shift the camera, so that one move stays on the closed form.
+In Webots the network solves every move to the cube and to the tray. The camera reading pose (x = −0.10 m) is outside the training box, where the network would be 3.2 mm off and shift the camera, so that one move stays on the closed form. The tray (x = −0.20 m) is outside the box too; the previous model was 7–11 mm off there, which the drop tolerates.
 
 ## How I checked it
 
 ### Ablation of the loss
 
-On single-branch data, the FK terms take the error from 0.238 to 0.187 mm.
+On single-branch data, the FK terms take the error from 0.238 to 0.187 mm (ablation run; the shipped model reaches 0.185 mm).
 
 ![Effect of the physics term](assets/fig_ablation.svg)
 
 <details>
 <summary>Protocol, and the branch-mixed case</summary>
 
-Same seed, data, architecture and schedule; only the loss changes. 0.187 mm is the ablation's own run on its shared dataset; the shipped model, trained separately by `train_true_pinn.py`, reaches 0.185 mm. On branch-mixed data a supervised network collapses to 911 mm, the average of several valid configurations, and the FK terms alone only bring it to 3.68 mm with 71.6° of orientation error. Full 2 × 3 table in [`docs/experiments.md`](docs/experiments.md#1-physics-term-ablation).
+Same seed, data, architecture and schedule; only the loss changes. 0.187 mm is the ablation's own run on its shared dataset; the shipped model, trained separately by `train_true_pinn.py`, reaches 0.185 mm. On branch-mixed data a supervised network collapses to 911 mm, the average of several valid configurations, and even with the FK terms weighted 20× it only reaches 3.68 mm with 71.6° of orientation error. Full 2 × 3 table in [`docs/experiments.md`](docs/experiments.md#1-physics-term-ablation).
 </details>
 
 ### Multi-head sweep

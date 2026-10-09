@@ -115,8 +115,8 @@ network does not need.
 
 ### Caveats
 
-- Against the shipped single-branch model, K = 2 is 1.7× worse in position, 18×
-  worse in orientation and about 9× slower (4.9 ms against 0.54 ms). For one tool orientation and
+- Against the shipped single-branch model, K = 2 is 1.7× worse in position, about
+  20× worse in orientation and about 9× slower (4.9 ms against 0.54 ms). For one tool orientation and
   top-down grasps, fixing the branch in the data generator is the better
   engineering choice, and that is what the repository ships.
 - Branch coverage is not stable across runs. At K = 4, `right-down-up` is
