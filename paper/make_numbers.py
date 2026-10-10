@@ -58,6 +58,10 @@ if seeds:
     halfr = stats.t.ppf(0.975, n - 1) * np.std(red, ddof=1) / np.sqrt(n)
     put('ablRedLo', f"{np.mean(red) - halfr:.0f}"); put('ablRedHi', f"{np.mean(red) + halfr:.0f}")
     put('ablP', f"{stats.ttest_rel(p0, p1).pvalue:.2f}")
+    put('ablWilcoxonP', f"{stats.wilcoxon(p0, p1).pvalue:.2f}")
+    # seeds needed to detect the observed mean difference (paired, alpha 0.05, power 0.8)
+    z = stats.norm.ppf(0.975) + stats.norm.ppf(0.8)
+    put('ablSeedsNeeded', f"{int(np.ceil((z * diff.std(ddof=1) / diff.mean()) ** 2)) + 2}")
     put('splitTrain', f"{A[0]['split'][0]:,}"); put('splitVal', f"{A[0]['split'][1]:,}")
     put('splitTest', f"{A[0]['split'][2]:,}"); put('nTargets', f"{A[0]['n_targets']:,}")
     put('fingerprint', A[0]['fingerprint'])
@@ -77,6 +81,18 @@ for part, tag in (('B', 'Four'), ('D', 'Eight')):
         put(f'mh{tag}{w}RecMin', f"{100 * min(r['recall'] for r in rr):.1f}")
         put(f'mh{tag}{w}RecMax', f"{100 * max(r['recall'] for r in rr):.1f}")
         put(f'mh{tag}{w}Params', f"{rr[0]['n_params']:,}")
+    # recall ceiling: K heads can cover at most min(K, n_i) of the n_i branches of target i
+    cache = (os.path.join(ROOT, 'checkpoints', 'dataset_branches.npz') if part == 'B'
+             else os.path.join(SEEDS, 'dataset_8branches.npz'))
+    if os.path.exists(cache):
+        import sys
+        sys.path.insert(0, os.path.join(ROOT, 'experiments'))
+        from seed_study import split
+        Mte = np.load(cache)['M'][split(len(np.load(cache)['M']))[2]]
+        nb = Mte.sum(1)
+        for K in (1, 2, 4, 8):
+            w = {1: 'One', 2: 'Two', 4: 'FourK', 8: 'EightK'}[K]
+            put(f'mh{tag}{w}Ceil', f"{100 * np.minimum(K, nb).sum() / nb.sum():.1f}")
     if part == 'D':
         put('branchesPerTarget', f"{runs[0]['branches_per_target']:.2f}")
         av = runs[0]['branch_availability']
@@ -92,9 +108,9 @@ if os.path.exists(c):
     put('shipTestMax', f"{C['test_pos_max_mm']:.3f}")
 
 # --- Benchmark ----------------------------------------------------------------
-B = {r['solveur']: r for r in json.load(open(os.path.join(ROOT, 'checkpoints', 'benchmark_solveurs.json')))['resultats']}
+B = {r['solveur']: r for r in json.load(open(os.path.join(ROOT, 'results', 'benchmark', 'benchmark.json')))['resultats']}
 cf, nn1 = B['forme fermee analytique'], B['reseau, sortie unique']
-nn2, ik = B['reseau, 2 tetes + selection'], B['IKPY (repere URDF) *']
+nn2, ik = B['reseau, 2 tetes + selection'], B['IKPY, pose complete']
 d1, d8 = B['DLS, depart unique'], B['DLS, 8 relances']
 for name, r in (('Cf', cf), ('NnOne', nn1), ('NnTwo', nn2), ('Ikpy', ik), ('DlsOne', d1), ('DlsEight', d8)):
     put(f'bench{name}Med', f"{r['temps_median_ms']:.3f}" if r['temps_median_ms'] < 10 else f"{r['temps_median_ms']:.1f}")

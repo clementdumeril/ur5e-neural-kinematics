@@ -80,9 +80,9 @@ loss; the reported latency includes that selection.
 
 | Training | Position | Orientation | Solve time (benchmark) | Branch chosen by hand |
 | :-- | ---: | ---: | ---: | :-: |
-| Single head, one branch | 0.187 mm | 0.011° | 0.543 ms | yes |
-| Single head, mixed branches ($w_p = 20$) | 3.684 mm | 71.6° | 0.543 ms | no |
-| 2 heads, mixed branches | 0.314 mm | 0.202° | 4.911 ms | no |
+| Single head, one branch | 0.187 mm | 0.011° | 0.531 ms | yes |
+| Single head, mixed branches ($w_p = 20$) | 3.684 mm | 71.6° | 0.531 ms | no |
+| 2 heads, mixed branches | 0.314 mm | 0.202° | 4.029 ms | no |
 
 Solve times are the benchmark medians of section 5, which include the tensor conversion and, for two heads, the FK and the selection.
 
@@ -113,7 +113,7 @@ Same cached dataset (fingerprint `b9e74b3f`), same seed, 100 epochs. Latency her
 | 4 | 1.06 M | 0.357 mm | 0.322° | 82.2% | 5.23 ms |
 | 8 | 1.59 M | 0.439 mm | 0.278° | 86.8% | 5.67 ms |
 
-K = 2 gives the most accurate single answer. Recall keeps rising with K because
+In this single run K = 2 gave the most accurate answer; over three seeds on a test set (paper, Section 6.3) K = 4 and K = 8 are as accurate, so that ranking does not hold. Recall keeps rising with K because
 best-of-K needs only one correct head, while recovering the whole solution set
 needs more. At K = 2 one head reproduces `right-up-up` 99% of the time and the
 other does not land on a second branch. At K = 8, three of the four branches are
@@ -130,7 +130,7 @@ network does not need.
 ### Caveats
 
 - Against the shipped single-branch model, K = 2 is 1.7× worse in position, about
-  20× worse in orientation and about 9× slower (4.9 ms against 0.54 ms). For one tool orientation and
+  20× worse in orientation and about 8× slower (4.0 ms against 0.53 ms). For one tool orientation and
   top-down grasps, fixing the branch in the data generator is the better
   engineering choice, and that is what the repository ships.
 - Branch coverage is not stable across runs. At K = 4, `right-down-up` is
@@ -213,28 +213,32 @@ at roughly twice the cost.
 ## 5. Solver benchmark
 
 Script: [`experiments/benchmark_solveurs.py`](../experiments/benchmark_solveurs.py).
-Results: [`checkpoints/benchmark_solveurs.json`](../checkpoints/benchmark_solveurs.json).
+Results: [`results/benchmark/benchmark.json`](../results/benchmark/benchmark.json).
 
-200 targets, 200 warm-up calls discarded, `torch.set_num_threads(1)`. Times are
-measured at the call site and include the NumPy-to-tensor conversion a caller
-has to pay.
+The same 200 targets for every solver, position and tool orientation both
+imposed. 200 warm-up calls on a different set of targets are discarded;
+`torch.set_num_threads(1)`. Times are measured at the call site and include the
+NumPy-to-tensor conversion a caller has to pay. A solution further than 1 mm
+or 0.1° from the requested pose counts as a failure.
 
 | Solver | Median | Mean | p95 | Error | Failures | Differentiable |
 | :-- | ---: | ---: | ---: | ---: | ---: | :-: |
-| Closed form | 0.232 ms | 0.272 | 0.488 | exact | 0% | no |
-| Network, single output | 0.543 ms | 0.607 | 1.196 | 0.165 mm | 0% | yes |
-| Network, 2 heads + selection | 4.911 ms | 5.085 | 7.679 | 0.253 mm | 0% | yes |
-| Damped least squares, one start | 135.8 ms | 96.2 | 165.0 | exact | 59.5% | no |
-| Damped least squares, 8 restarts | 287.4 ms | 190.3 | 341.5 | exact | 0% | no |
-| IKPY (iterative) * | 29.6 ms | 31.1 | 45.6 | n/a | 0% | no |
+| Closed form | 0.232 ms | 0.294 | 0.607 | exact | 0% | no |
+| Network, single output | 0.531 ms | 0.613 | 1.296 | 0.165 mm | 0% | yes |
+| Network, 2 heads + selection | 4.029 ms | 4.484 | 7.159 | 0.261 mm | 0% | yes |
+| IKPy, full pose | 38.1 ms | 39.5 | 61.9 | exact | 58.0% | no |
+| Damped least squares, one start | 136.0 ms | 118.9 | 260.4 | exact | 59.5% | no |
+| Damped least squares, 8 restarts | 270.0 ms | 204.2 | 457.4 | exact | 0% | no |
 
-\* IKPY loads the URDF chain, which does not describe the same robot as this
-project's DH table: for identical joint angles the two forward kinematics place
-the end-effector 1.3 to 1.8 m apart. IKPY is therefore given targets drawn from
-its own forward kinematics, and only its timing is comparable. Reconciling the
-two models is open work.
+IKPy runs on a chain built from this project's DH table
+(`ikpy_chain_from_dh` in `src/kinematics/ikpy_ur5e_solver.py`, FK identical to
+1e-15) and starts from the same rest configuration as damped least squares.
+Both local methods fail on about 60% of targets from that start.
 
-The network is 2.3× slower than the closed form and about 55× faster than IKPY.
+The network is 2.3× slower than the closed form and about 72× faster than IKPy.
+
+An earlier version of this table gave IKPy the position only, on targets from a
+different URDF, and reported 55×. It compared two different problems.
 
 ---
 
@@ -271,8 +275,9 @@ refuted:
 
 1. "A supervised network averages the 8 IK solutions and our PINN resolves the
    ambiguity." Both dataset generators keep a single branch before training,
-   so there was nothing to average. The measured effect of the physics term is
-   21% (section 1).
+   so there was nothing to average. The measured effect of the physics term was
+   21% in a single run (section 1); over five seeds on a test set it is not
+   significant (paper, Section 6.2).
 2. "The network is continuous where analytic solvers jump between branches."
    The jumps are identical and no branch change occurs (section 3).
 3. "The network is faster than the closed-form solver." That first table timed

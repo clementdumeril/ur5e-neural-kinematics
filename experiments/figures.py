@@ -44,14 +44,14 @@ def barre(x, y, w, h, couleur, bord=None):
 # =====================================================================
 def figure_benchmark():
     import math
-    chemin = os.path.join(_ROOT, 'checkpoints', 'benchmark_solveurs.json')
+    chemin = os.path.join(_ROOT, 'results', 'benchmark', 'benchmark.json')
     res = json.load(open(chemin))['resultats']
 
     libelles = {
         'forme fermee analytique': ('Closed-form analytic', False),
         'reseau, sortie unique': ('Neural, single output', True),
         'reseau, 2 tetes + selection': ('Neural, 2 heads', True),
-        'IKPY (repere URDF) *': ('IKPY (iterative) *', False),
+        'IKPY, pose complete': ('IKPy (iterative)', False),
         'DLS, depart unique': ('Damped least squares', False),
         'DLS, 8 relances': ('DLS, 8 restarts', False),
     }
@@ -69,8 +69,8 @@ def figure_benchmark():
 
     p = [entete(W, H)]
     p.append(texte(40, 44, 'Inverse-kinematics solve time', 19, NOIR, gras=True))
-    p.append(texte(40, 68, 'Median of 200 calls after 200 warm-up calls, single thread. '
-                           'Logarithmic scale.', 13, GRIS))
+    p.append(texte(40, 68, 'Same 200 pose targets for all, median, single thread, after 200 '
+                           'warm-up calls on other targets. Log scale.', 13, GRIS))
 
     base = 104
     for i, (nom, val, neuronal) in enumerate(lignes):
@@ -94,8 +94,8 @@ def figure_benchmark():
                    'The closed form stays 2.3x faster than the network. The network is the only '
                    'differentiable solver in this set.', 12, GRIS))
     p.append(texte(40, yg + 64,
-                   '* IKPY is measured in the URDF frame, which does not coincide with this '
-                   "project's DH table; only the timing is comparable.", 11, GRIS_CLAIR))
+                   'From the rest configuration, IKPy and single-start damped least squares '
+                   'fail on 58% and 60% of targets.', 11, GRIS_CLAIR))
     p.append('</svg>')
 
     out = os.path.join(ASSETS, 'fig_benchmark.svg')

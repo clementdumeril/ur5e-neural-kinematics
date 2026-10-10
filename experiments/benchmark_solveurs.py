@@ -15,10 +15,16 @@ Les cinq solveurs compares
 
 Protocole
 ---------
-Meme jeu de cibles pour tous. 200 appels d'echauffement jetes -- sans quoi on
+Meme jeu de 200 cibles pour tous, position ET orientation de l'outil imposees.
+200 appels d'echauffement jetes, sur un AUTRE jeu de cibles -- sans quoi on
 compare un PyTorch froid a un NumPy chaud, erreur commise dans une version
-precedente de ce projet et qui avait fausse le tableau dans les deux sens.
-torch.set_num_threads(1) pour que la mesure ne depende pas du nombre de coeurs.
+precedente de ce projet. torch.set_num_threads(1) pour que la mesure ne depende
+pas du nombre de coeurs.
+
+IKPY resout desormais le meme probleme que les autres : chaine construite depuis
+la table DH du projet (ikpy_chain_from_dh), memes cibles, orientation imposee
+(orientation_mode="all"). La version precedente lui donnait la position seule,
+dans le repere d'un URDF different : elle comparait deux problemes.
 
 Les methodes locales (DLS, IKPY) partent toutes de la meme configuration de
 repos : leur resultat en depend, c'est la nature d'une methode iterative, et le
@@ -54,7 +60,7 @@ torch.set_num_threads(1)
 
 ROT_DOWN = [math.pi, 0.0, -math.pi / 2]
 Q_REPOS = np.array([0.0, -np.pi / 3, np.pi / 2, -np.pi / 6, -np.pi / 2, 0.0])
-N_CIBLES = int(os.environ.get('BM_CIBLES', 300))
+N_CIBLES = int(os.environ.get('BM_CIBLES', 200))
 N_ECHAUF = 200
 
 
@@ -79,7 +85,7 @@ def cibles(n, seed=7):
     return out
 
 
-def mesurer(nom, resoudre, jeu, differentiable):
+def mesurer(nom, resoudre, jeu, echauffement, differentiable):
     """
     Chronometre un solveur et mesure ou sa solution atterrit REELLEMENT.
 
@@ -87,13 +93,13 @@ def mesurer(nom, resoudre, jeu, differentiable):
     jamais rapportee par le solveur lui-meme : un solveur qui se trompe sur sa
     propre erreur existe, on en a rencontre un dans ce projet.
     """
-    for t, T in jeu[:min(N_ECHAUF, len(jeu))]:
+    for t, T in echauffement:
         try:
             resoudre(t, T)
         except Exception:
             pass
 
-    temps, erreurs, echecs = [], [], 0
+    temps, erreurs, erreurs_rot, echecs = [], [], [], 0
     for t, T in jeu:
         t0 = time.perf_counter()
         try:
@@ -104,10 +110,14 @@ def mesurer(nom, resoudre, jeu, differentiable):
         if q is None or np.any(np.isnan(q)):
             echecs += 1
             continue
-        erreurs.append(np.linalg.norm(fk_np(np.asarray(q, float))[:3, 3] - t) * 1000.0)
+        Tq = fk_np(np.asarray(q, float))
+        erreurs.append(np.linalg.norm(Tq[:3, 3] - t) * 1000.0)
+        c = (np.trace(T[:3, :3].T @ Tq[:3, :3]) - 1.0) / 2.0
+        erreurs_rot.append(math.degrees(math.acos(min(1.0, max(-1.0, c)))))
 
     temps = np.array(temps)
     erreurs = np.array(erreurs) if erreurs else np.array([np.nan])
+    erreurs_rot = np.array(erreurs_rot) if erreurs_rot else np.array([np.nan])
     return {
         'solveur': nom,
         'temps_median_ms': float(np.median(temps)),
@@ -115,6 +125,7 @@ def mesurer(nom, resoudre, jeu, differentiable):
         'temps_p95_ms': float(np.percentile(temps, 95)),
         'erreur_mediane_mm': float(np.median(erreurs)),
         'erreur_p95_mm': float(np.percentile(erreurs, 95)),
+        'erreur_rot_mediane_deg': float(np.median(erreurs_rot)),
         'taux_echec': echecs / len(jeu),
         'differentiable': differentiable,
     }
@@ -126,7 +137,8 @@ def main():
           f"{N_ECHAUF} appels d'echauffement jetes, 1 thread")
     print("=" * 92)
 
-    jeu = cibles(N_CIBLES)
+    jeu = cibles(N_CIBLES, seed=7)
+    echauffement = cibles(N_ECHAUF, seed=8)
     fk_t = UR5ForwardKinematicsPyTorch()
     resultats = []
 
@@ -134,61 +146,42 @@ def main():
     resultats.append(mesurer(
         "forme fermee analytique",
         lambda t, T: inverse_kinematics(T, shoulder='left', wrist='up', elbow='up'),
-        jeu, False))
+        jeu, echauffement, False))
 
     # --- 2. moindres carres amortis -------------------------------------
     def dls_simple(t, T):
         q, ok, _ = solve_ik_dls(T, Q_REPOS)
         return q if ok else None
-    resultats.append(mesurer("DLS, depart unique", dls_simple, jeu, False))
+    resultats.append(mesurer("DLS, depart unique", dls_simple, jeu, echauffement, False))
 
     def dls_relances(t, T):
         q, ok, _ = solve_ik_dls_restarts(T, Q_REPOS, n_restarts=8)
         return q if ok else None
-    resultats.append(mesurer("DLS, 8 relances", dls_relances, jeu, False))
+    resultats.append(mesurer("DLS, 8 relances", dls_relances, jeu, echauffement, False))
 
-    # --- 3. IKPY, DANS SON PROPRE REPERE --------------------------------
+    # --- 3. IKPY, sur la meme chaine et les memes cibles -------------
     #
-    # L'URDF et la table DH ne decrivent PAS la meme chaine : pour les memes
-    # angles articulaires, les deux cinematiques directes placent l'effecteur a
-    # 1,3 a 1,8 METRE l'une de l'autre. Evaluer IKPY sur des cibles exprimees
-    # en coordonnees DH mesurerait ce desaccord de convention, pas le solveur.
-    #
-    # On lui donne donc des cibles tirees de SA propre cinematique directe, et
-    # on mesure son erreur avec SA propre FK. Le temps devient comparable -- les
-    # deux resolvent une IK de UR5e de difficulte equivalente -- mais les
-    # erreurs, elles, ne sont pas dans le meme repere et ne se comparent pas.
+    # Chaine IKPY construite depuis la table DH du projet (FK identique a
+    # 1e-15 pres), orientation complete imposee, meme depart que la DLS.
+    # Echec : solution a plus de 1 mm ou 0,1 deg de la pose demandee.
     try:
-        from ikpy_ur5e_solver import IKPYUR5eSolver
-        ik = IKPYUR5eSolver(os.path.join(_ROOT, 'src', 'kinematics', 'ur5e.urdf'))
+        from ikpy_ur5e_solver import ikpy_chain_from_dh
+        from jacobian import DH
+        chaine = ikpy_chain_from_dh(DH)
+        depart = np.concatenate(([0.0], Q_REPOS, [0.0]))
 
-        rng = np.random.default_rng(11)
-        jeu_ikpy = []
-        for _ in range(len(jeu)):
-            q = rng.uniform(-1.0, 1.0, 6)
-            p = ik.chain.forward_kinematics(np.concatenate(([0.0], q)))[:3, 3]
-            jeu_ikpy.append((p, None))
-
-        temps, erreurs = [], []
-        for p, _ in jeu_ikpy[:N_ECHAUF]:
-            ik.solve_ik(p)
-        for p, _ in jeu_ikpy:
-            t0 = time.perf_counter()
-            q = ik.solve_ik(p)[0]
-            temps.append((time.perf_counter() - t0) * 1000.0)
-            atteint = ik.chain.forward_kinematics(np.concatenate(([0.0], q)))[:3, 3]
-            erreurs.append(np.linalg.norm(atteint - p) * 1000.0)
-        temps, erreurs = np.array(temps), np.array(erreurs)
-        resultats.append({
-            'solveur': "IKPY (repere URDF) *",
-            'temps_median_ms': float(np.median(temps)),
-            'temps_moyen_ms': float(np.mean(temps)),
-            'temps_p95_ms': float(np.percentile(temps, 95)),
-            'erreur_mediane_mm': float(np.median(erreurs)),
-            'erreur_p95_mm': float(np.percentile(erreurs, 95)),
-            'taux_echec': 0.0, 'differentiable': False,
-            'note': 'cibles et erreurs dans le repere URDF, non comparables aux autres',
-        })
+        def ikpy_pose(t, T):
+            qf = chaine.inverse_kinematics(
+                target_position=T[:3, 3], target_orientation=T[:3, :3],
+                orientation_mode='all', initial_position=depart)
+            q = np.asarray(qf[1:7], float)
+            Tq = fk_np(q)
+            c = (np.trace(T[:3, :3].T @ Tq[:3, :3]) - 1.0) / 2.0
+            if (np.linalg.norm(Tq[:3, 3] - t) > 1e-3
+                    or math.degrees(math.acos(min(1.0, max(-1.0, c)))) > 0.1):
+                return None
+            return q
+        resultats.append(mesurer("IKPY, pose complete", ikpy_pose, jeu, echauffement, False))
     except Exception as e:
         print(f"  [IKPY indisponible : {e}]")
 
@@ -200,7 +193,7 @@ def main():
     def reseau(t, T):
         with torch.no_grad():
             return m1(torch.tensor(t, dtype=torch.float32).unsqueeze(0))[0].numpy()
-    resultats.append(mesurer("reseau, sortie unique", reseau, jeu, True))
+    resultats.append(mesurer("reseau, sortie unique", reseau, jeu, echauffement, True))
 
     # --- 5. reseau multi-tetes ------------------------------------------
     chemin = os.path.join(_ROOT, 'checkpoints', 'multihead_K2.pth')
@@ -211,9 +204,11 @@ def main():
             x = torch.tensor(t, dtype=torch.float32).unsqueeze(0)
             with torch.no_grad():
                 q = m2(x)[0]
-                p = fk_t.forward_pos(q)
-                return q[int(torch.norm(p - x, dim=1).argmin())].numpy()
-        resultats.append(mesurer("reseau, 2 tetes + selection", multi, jeu, True))
+                Tq = fk_t.forward(q)
+                Rc = torch.tensor(T[:3, :3], dtype=torch.float32)
+                e = ((Tq[:, :3, 3] - x) ** 2).sum(1) + 0.05 ** 2 * ((Tq[:, :3, :3] - Rc) ** 2).sum((1, 2))
+                return q[int(e.argmin())].numpy()
+        resultats.append(mesurer("reseau, 2 tetes + selection", multi, jeu, echauffement, True))
 
     # --- tableau ---------------------------------------------------------
     print(f"\n{'Solveur':<30} {'median':>9} {'moyen':>9} {'p95':>9} "
@@ -225,14 +220,12 @@ def main():
               f"{r['erreur_mediane_mm']:>9.4f}mm {r['taux_echec']:>7.1%} "
               f"{'oui' if r['differentiable'] else 'non':>7}")
     print("=" * 92)
-    print("* IKPY est mesure dans le repere de l'URDF, qui ne coincide pas avec")
-    print("  la table DH du projet : pour les memes angles, les deux cinematiques")
-    print("  directes different de 1,3 a 1,8 m. Seuls les TEMPS sont comparables ;")
-    print("  les erreurs ne sont pas exprimees dans le meme repere.")
-
-    sortie = os.path.join(_ROOT, 'checkpoints', 'benchmark_solveurs.json')
+    sortie = os.path.join(_ROOT, 'results', 'benchmark', 'benchmark.json')
+    os.makedirs(os.path.dirname(sortie), exist_ok=True)
     json.dump({'n_cibles': N_CIBLES, 'echauffement': N_ECHAUF,
-               'threads': 1, 'resultats': resultats}, open(sortie, 'w'), indent=2)
+               'echauffement_sur_cibles_distinctes': True, 'orientation_imposee': True,
+               'threads': 1, 'torch': torch.__version__, 'resultats': resultats},
+              open(sortie, 'w'), indent=2)
     print(f"\nResultats : {sortie}")
 
 

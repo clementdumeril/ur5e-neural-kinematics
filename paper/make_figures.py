@@ -3,7 +3,7 @@ Figures for paper/main.tex, generated from result files in the repository.
 
     python paper/make_figures.py
 
-Reads   results/seed_study/*.json, checkpoints/benchmark_solveurs.json,
+Reads   results/seed_study/*.json, results/benchmark/benchmark.json,
         results/heatmap/workspace_error.npz (computed on first run, ~3 min)
 Writes  paper/figures/*.pdf (vector) and copies the Webots screenshot.
 """
@@ -15,6 +15,7 @@ import sys
 
 import numpy as np
 import matplotlib
+import matplotlib.ticker
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
@@ -90,9 +91,9 @@ def fig_multihead():
                     label=label if ax is axes[0] else None)
     if not any_data:
         plt.close(fig); print('  multihead: no Part B/D results yet'); return
-    axes[0].set_yscale('log')
+    axes[0].set_yscale('log'); axes[1].yaxis.set_minor_locator(matplotlib.ticker.MultipleLocator(10))
     axes[0].set_ylabel('test position error (mm)')
-    axes[1].set_ylabel('branches recovered (%)')
+    axes[1].set_ylabel('branch recall (%)')
     axes[1].set_ylim(0, 100)
     for ax in axes:
         ax.set_xticks([0, 1, 2, 3], ['1', '2', '4', '8'])
@@ -106,26 +107,26 @@ def fig_multihead():
 
 
 def fig_benchmark():
-    res = json.load(open(os.path.join(ROOT, 'checkpoints', 'benchmark_solveurs.json')))['resultats']
+    res = json.load(open(os.path.join(ROOT, 'results', 'benchmark', 'benchmark.json')))['resultats']
     names = {
         'forme fermee analytique': 'Closed form',
         'reseau, sortie unique': 'Network, 1 output',
         'reseau, 2 tetes + selection': 'Network, 2 heads',
-        'IKPY (repere URDF) *': 'IKPY$^{*}$',
+        'IKPY, pose complete': 'IKPy',
         'DLS, depart unique': 'DLS, 1 start',
         'DLS, 8 relances': 'DLS, 8 restarts',
     }
     rows = sorted([(names[r['solveur']], r['temps_median_ms'], r['temps_p95_ms'],
                     r['solveur'].startswith('reseau')) for r in res if r['solveur'] in names],
                   key=lambda t: t[1], reverse=True)
-    fig, ax = plt.subplots(figsize=(W1 * 1.15, 1.9))
+    fig, ax = plt.subplots(figsize=(3.0, 1.9))
     y = np.arange(len(rows))
     ax.barh(y, [r[1] for r in rows], color=[BLUE if r[3] else GREY for r in rows], height=0.6)
     ax.errorbar([r[1] for r in rows], y, xerr=[[0] * len(rows), [r[2] - r[1] for r in rows]],
                 fmt='none', ecolor='#374151', lw=0.7, capsize=2)
     ax.set_yticks(y, [r[0] for r in rows])
     ax.set_xscale('log')
-    ax.set_xlabel('solve time per target (ms), median and p95')
+    ax.set_xlabel('time per target (ms)')
     ax.spines['left'].set_visible(False)
     ax.tick_params(axis='y', length=0)
     fig.savefig(os.path.join(FIG, 'benchmark.pdf'))

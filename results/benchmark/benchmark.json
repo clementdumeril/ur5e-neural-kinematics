@@ -1,0 +1,76 @@
+{
+  "n_cibles": 200,
+  "echauffement": 200,
+  "echauffement_sur_cibles_distinctes": true,
+  "orientation_imposee": true,
+  "threads": 1,
+  "torch": "2.8.0+cpu",
+  "resultats": [
+    {
+      "solveur": "forme fermee analytique",
+      "temps_median_ms": 0.23179998970590532,
+      "temps_moyen_ms": 0.294492001994513,
+      "temps_p95_ms": 0.6065450055757532,
+      "erreur_mediane_mm": 2.2447064458659097e-13,
+      "erreur_p95_mm": 5.736110546987331e-13,
+      "erreur_rot_mediane_deg": 0.0,
+      "taux_echec": 0.0,
+      "differentiable": false
+    },
+    {
+      "solveur": "DLS, depart unique",
+      "temps_median_ms": 136.0481999872718,
+      "temps_moyen_ms": 118.8673320011003,
+      "temps_p95_ms": 260.40134997747367,
+      "erreur_mediane_mm": 1.0899783057098366e-05,
+      "erreur_p95_mm": 0.0008730321333311495,
+      "erreur_rot_mediane_deg": 0.0,
+      "taux_echec": 0.595,
+      "differentiable": false
+    },
+    {
+      "solveur": "DLS, 8 relances",
+      "temps_median_ms": 269.96360000339337,
+      "temps_moyen_ms": 204.18211200158112,
+      "temps_p95_ms": 457.42382999451337,
+      "erreur_mediane_mm": 6.7593107068942825e-06,
+      "erreur_p95_mm": 0.0007687285092716329,
+      "erreur_rot_mediane_deg": 0.0,
+      "taux_echec": 0.0,
+      "differentiable": false
+    },
+    {
+      "solveur": "IKPY, pose complete",
+      "temps_median_ms": 38.0845999752637,
+      "temps_moyen_ms": 39.53561050177086,
+      "temps_p95_ms": 61.85265000094657,
+      "erreur_mediane_mm": 1.4510843515920419e-08,
+      "erreur_p95_mm": 6.298989921519114e-06,
+      "erreur_rot_mediane_deg": 0.0,
+      "taux_echec": 0.58,
+      "differentiable": false
+    },
+    {
+      "solveur": "reseau, sortie unique",
+      "temps_median_ms": 0.5309499974828213,
+      "temps_moyen_ms": 0.6129790001432411,
+      "temps_p95_ms": 1.2956949678482486,
+      "erreur_mediane_mm": 0.16479346347862037,
+      "erreur_p95_mm": 0.3923325324817888,
+      "erreur_rot_mediane_deg": 0.009069303918406976,
+      "taux_echec": 0.0,
+      "differentiable": true
+    },
+    {
+      "solveur": "reseau, 2 tetes + selection",
+      "temps_median_ms": 4.029300005640835,
+      "temps_moyen_ms": 4.483625500579365,
+      "temps_p95_ms": 7.158714983961543,
+      "erreur_mediane_mm": 0.26079936448610097,
+      "erreur_p95_mm": 0.4782132313130653,
+      "erreur_rot_mediane_deg": 0.14512561401813118,
+      "taux_echec": 0.0,
+      "differentiable": true
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # UR5e Neural Kinematics
 
-Neural inverse kinematics for a UR5e arm, trained through a differentiable model of the robot's forward kinematics: 0.19 mm mean position error on 2,021 held-out test targets and 0.54 ms per solve, running inside a camera-guided pick-and-place loop in Webots.
+Neural inverse kinematics for a UR5e arm, trained through a differentiable model of the robot's forward kinematics: 0.19 mm mean position error on 2,021 held-out test targets and 0.53 ms per solve, running inside a camera-guided pick-and-place loop in Webots.
 
 **Full report:** [`paper/main.pdf`](paper/main.pdf), an 11-page preprint with the multi-seed results, the verification and the references.
 
@@ -24,15 +24,15 @@ Stack: PyTorch, Webots, DH kinematics / geometric Jacobian / damped least square
 | | Value | Source |
 | :-- | --: | :-- |
 | Position / orientation error of the shipped model, 2,021 held-out test targets | 0.191 mm / 0.009° | [`C_shipped.json`](results/seed_study/C_shipped.json) |
-| Same training, 5 seeds, test set | 0.214 ± 0.039 mm | [`results/seed_study/`](results/seed_study/) |
-| Solve time, median, one thread, tensor conversion included | 0.543 ms | [`benchmark_solveurs.json`](checkpoints/benchmark_solveurs.json) |
-| Against IKPY / against the closed-form solver | 55× faster / 2.3× slower | same |
+| Same architecture and loss, 5 seeds, smaller training split (16.2k targets), test set | 0.214 ± 0.039 mm | [`results/seed_study/`](results/seed_study/) |
+| Solve time, median, one thread, tensor conversion included | 0.531 ms | [`benchmark.json`](results/benchmark/benchmark.json) |
+| Against IKPy on the same pose problem / against the closed-form solver | 72× faster / 2.3× slower | same |
 | Effect of the FK terms on single-branch data, 5 paired seeds | 11% lower on average, not significant (95% CI −13% to +34%) | [`results/seed_study/`](results/seed_study/) |
 | Branch-mixed data, no labels: IK branches recovered with 1 → 8 heads | 13% → 78% (4 branches), 14% → 51% (8 branches) | [`results/seed_study/`](results/seed_study/) |
 
 ![IK solve time for six solvers](assets/fig_benchmark.svg)
 
-*Median over 200 targets, one thread, 200 warm-up calls discarded; IKPY timed in its own URDF frame.*
+*Same 200 pose targets for every solver, one thread, 200 warm-up calls on other targets. From the rest configuration, IKPy and single-start damped least squares fail on 58% and 60% of targets.*
 
 ## What I built
 
@@ -119,7 +119,7 @@ On branch-mixed data, without branch labels, more heads recover more of the solu
 <details>
 <summary>The single-head case, eight branches, and the cost</summary>
 
-With one head and the FK loss alone, the network settles on one branch by itself in 2 of 3 seeds (0.33 to 0.44 mm) and stalls between branches in the third (4.4 and 8.8 mm). The 911 mm collapse comes from the supervised term on mixed labels, not from having a single output. The sweep was run on the four elbow-up branches and, after the solver fix, on all eight. Against single-branch training, two heads have about twice the error and are 9× slower (4.9 against 0.54 ms). Tables in Section 6.3 of the paper.
+With one head and the FK loss alone, the network settles on one branch by itself in 2 of 3 seeds (0.33 to 0.44 mm) and stalls between branches in the third (4.4 and 8.8 mm). The 911 mm collapse comes from the supervised term on mixed labels, not from having a single output. The sweep was run on the four elbow-up branches and, after the solver fix, on all eight. Against single-branch training, two heads have about twice the error and are 8× slower (4.0 against 0.53 ms). Tables in Section 6.3 of the paper.
 </details>
 
 ### Error on the simulated robot
@@ -147,7 +147,6 @@ Corrections in October 2026: the 21% gain from the FK terms did not hold over fi
 - On this z = 0.25 m slice the median error is 0.176 mm inside the training box and 14.3 mm outside it.
 - Past the reach limit the network still returns six angles, up to 1.78 m off, with no warning; the closed form raises an exception. A deployment needs a reachability check in front of the network.
 - One tool orientation and one IK branch: no side approach, no elbow-down route around an obstacle.
-- IKPY loads a URDF that does not match this project's DH table (1.3 to 1.8 m apart for the same angles), so only its timing is comparable.
 - Everything runs in simulation.
 
 ## Reproduce

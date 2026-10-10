@@ -35,26 +35,23 @@ Contact: \texttt{clementdumeril@gmail.com}.}\\[2pt]
 
 \begin{abstract}
 A neural network can replace the inverse-kinematics (IK) solver of a robot arm,
-but a network trained to regress joint angles is penalised in joint space, not
-where the hand lands. This paper trains a multilayer perceptron for
-position IK of a 6-DoF UR5e at a fixed downward tool orientation, and
-backpropagates the end-effector error through a differentiable
-Denavit--Hartenberg model written in PyTorch. The deployed network reaches
-$\shipTestPos\mm$ mean position error on $\splitTest$ held-out targets in
-$\benchNnOneMed$\,ms per call. Over $\nSeedsA$ seeds, adding the
-forward-kinematics terms to a joint-space loss moves the test error from
-$\ablPosZero\mm$ to $\ablPosOne\mm$; the paired reduction, $\ablRedLo$ to
-$\ablRedHi\,\%$ at 95\,\% confidence, is not significant, and an earlier
-single-run estimate of 21\,\% does not hold. On data that mixes IK branches, a
-supervised single-output network fails, while a network trained on the
-forward-kinematics loss alone usually settles on one branch by itself.
-Additional heads trained with a relaxed winner-take-all loss, without branch
-labels, cover more of the solution set but are not more accurate. Building the
-eight-branch data set exposed an error in the inherited closed-form solver,
-which returned wrong angles for every elbow-down branch; it is fixed. The
-network is $\benchFasterIkpy\times$ faster than the IKPy library but
+but a network trained to regress joint angles is penalised in joint space
+rather than where the hand lands. We train a multilayer perceptron for position
+IK of a UR5e at a fixed downward tool orientation and backpropagate the
+end-effector error through a differentiable Denavit--Hartenberg model in
+PyTorch. The deployed network reaches $\shipTestPos\mm$ mean error on
+$\splitTest$ held-out targets in $\benchNnOneMed$\,ms. Over $\nSeedsA$ seeds,
+adding the forward-kinematics terms to a joint-space loss lowers the test error
+by 11\,\% (95\,\% CI $\ablRedLo$ to $+\ablRedHi\,\%$, $p=\ablP$), so an earlier
+single-run estimate of 21\,\% does not hold. On data mixing IK branches, a
+supervised single-output network collapses, whereas a single output trained on
+the forward-kinematics loss alone usually settles on one branch; extra heads
+trained with a relaxed winner-take-all loss, without labels, cover more
+branches but are not more accurate. The inherited closed-form solver returned
+wrong angles for every elbow-down branch (fixed here). The network is
+$\benchFasterIkpy\times$ faster than IKPy on the same problem but
 $\benchSlowerCf\times$ slower than the closed form, and outside its training
-box it returns plausible angles up to $\mapUnreachMax$\,m wrong without warning.
+box it returns angles up to $\mapUnreachMax$\,m wrong without warning.
 \end{abstract}
 
 %=============================================================================
@@ -69,7 +66,7 @@ without an analytic solution \citep{dsouza2001learning,ames2022ikflow}.
 
 The simplest learned IK regresses joint angles from Cartesian targets
 \citep{duka2014neural}. The loss is then expressed in joint space: an error of
-$10^{-3}$\,rad on the shoulder and on the last wrist joint cost the same,
+$10^{-3}$\,rad on the shoulder costs as much as on the last wrist joint,
 although the first moves the hand by about a millimetre and the second by
 almost nothing. Training the inverse model through a forward model, so that the
 error is measured where the hand actually lands, is an old idea
@@ -128,7 +125,8 @@ When one input has several valid outputs, a least-squares regressor predicts
 their mean. Mixture density networks model the conditional density
 \citep{bishop1994mdn}; normalising flows and invertible networks sample the
 solution set of inverse problems \citep{ardizzone2019inn}, including IK
-\citep{ames2022ikflow}. Multiple-choice learning trains several predictors and
+\citep{ames2022ikflow}; a hypernetwork can also sample joint angles one joint
+at a time, conditioned on the target \citep{bensadoun2022nik}. Multiple-choice learning trains several predictors and
 updates only the best one per sample
 \citep{guzmanrivera2012mcl,lee2016smcl}; relaxing the hard minimum avoids heads
 that never train \citep{rupprecht2017uncertain}. Our multi-head network follows
@@ -253,9 +251,13 @@ L_{\mathrm{MH}} = (1-\varepsilon)\,\ell_{k^\star} + \frac{\varepsilon}{K-1}\sum_
 \end{equation}
 so losing heads still receive gradient \citep{rupprecht2017uncertain}. No
 branch label enters training. At inference the FK scores the $K$ proposals with
-the same pose error and the best one is returned. Branch recall is computed
-afterwards by matching each head to the nearest valid closed-form solution
-under a periodic angular distance, with a 0.25\,rad threshold.
+the same pose error and the best one is returned. Branch recall is the share
+of valid closed-form solutions that at least one head lies within 0.25\,rad of,
+under a periodic angular distance in joint space. It measures how many branches
+the proposals point to, not that every proposal reaches the target: only the
+selected head is held to the pose error, and 0.25\,rad at the shoulder moves
+the tool by roughly 0.2\,m. With $K$ heads and $n_i$ valid branches for target
+$i$, recall cannot exceed $\sum_i \min(K,n_i)/\sum_i n_i$.
 
 \subsection{Data}
 Targets are drawn uniformly in the box. For each target the closed form is
@@ -274,16 +276,21 @@ $\splitTrain$ training, $\splitVal$ validation and $\splitTest$ test targets;
 the epoch is selected on validation position error and all reported errors
 are test errors. Errors are the mean Euclidean distance between the pose
 reached by FK and the target, and the mean geodesic angle to $R(q_{\mathrm{ref}})$.
-Seeds change the initialisation and batch order, not the data.
+Seeds change only the initialisation and the batch order; the data and the
+split are the same for every run, so the reported spread does not include
+the variance due to data sampling.
 
 \subsection{Baselines and integration}
 The closed form is the inherited solver with the correction of
 Section~\ref{sec:verif}. Damped least squares uses the geometric Jacobian with
 adaptive damping driven by the smallest singular value and an SO(3) logarithm
-for the rotation error, from one start or with eight random restarts. IKPy
-loads the UR5e URDF, whose zero configuration differs from our DH table, so it
-is evaluated on targets generated by its own FK and only its timing is
-comparable. In Webots the camera reads the cube position through a homography
+for the rotation error, from one start or with eight random restarts. For
+IKPy \citep{manceron_ikpy} we build the chain from the DH table of
+Table~\ref{tab:dh} (its FK matches ours to $10^{-15}$), impose the full tool
+orientation and start from the same rest configuration as damped least
+squares, so all solvers face the same problem on the same targets. A solution
+further than 1\,mm or $0.1^\circ$ from the requested pose counts as a failure.
+Timing uses 200 targets, after 200 warm-up calls on a different set. In Webots the camera reads the cube position through a homography
 fitted with RANSAC \citep{fischler1981ransac,hartley2004mvg} on a calibration
 grid, the network solves each grasp and transport target, and quintic
 trajectories with a closed-loop joint-position hold drive the arm.
@@ -317,7 +324,7 @@ regression test now round-trips all eight branches.
 \paragraph{Data and evaluation.}
 Training, validation and test indices are disjoint; the nearest training
 target to a test target is $\nnMin\mm$ away at minimum and $\nnMedian\mm$ at
-the median. Timings discard 200 warm-up calls, run on one thread and include the
+the median. Timings discard 200 warm-up calls made on separate targets, run on one thread and include the
 NumPy-to-tensor conversion a caller pays. A smoke test covering imports, data
 paths, a known target, the camera calibration and the eight-branch round trip
 runs in continuous integration.
@@ -339,10 +346,13 @@ with $w_p=1$ on single-branch data. The mean test position error goes from
 $\ablPosZero\mm$ to $\ablPosOne\mm$. Paired by seed, the FK terms help in
 $\ablWins$ of $\nSeedsA$ seeds; the mean difference is $\ablDiff\mm$, with a
 95\,\% confidence interval of $[\ablDiffLo, \ablDiffHi]\mm$ (paired $t$-test,
-$p=\ablP$), and the relative reduction ranges from $\ablRedMin$ to
-$\ablRedMax\,\%$ across seeds. Orientation error stays near one hundredth of a
-degree in both cases. At this sample size the FK terms do not give a
-reliable gain on single-branch data. An earlier single run reported a
+$p=\ablP$; Wilcoxon signed-rank $p=\ablWilcoxonP$, whose smallest attainable
+value with five pairs is 0.0625), and the relative reduction ranges from
+$\ablRedMin$ to $\ablRedMax\,\%$ across seeds. Orientation error stays near
+one hundredth of a degree in both cases. At this sample size the FK terms do
+not give a reliable gain on single-branch data; detecting the observed mean
+difference with 80\,\% power at the 5\,\% level would take about
+$\ablSeedsNeeded$ paired seeds. An earlier single run reported a
 21\,\% reduction; it used one seed and selected and reported the epoch on the
 same validation set. The single-branch target is a smooth function of the
 position, which the data term alone already fits to a quarter of a millimetre;
@@ -379,19 +389,21 @@ branch-mixed data. Part~B uses the four elbow-up branches (the data set of the
 original experiment); Part~D uses all eight branches after the solver
 correction, with on average $\branchesPerTarget$ valid branches per target.
 
-Three observations follow. First, with $K=1$ the loss contains no data term, so
-nothing pulls the single output towards the average of the branches: in two of
-three seeds on each data set it settles on one branch and reaches
-0.33--0.44\,mm, and in the third it stalls between branches at 4.4 and
-8.8\,mm. The collapse to the average reported in the original ablation
-(911\,mm) is therefore a property of the supervised data term on mixed labels,
-not of the single-output architecture. Second, from $K=2$ every run is
-sub-millimetre (0.26--0.62\,mm) and the error does not improve
-systematically with more heads. Third, recall grows with $K$, from $\mhFourOneRec$ to
-$\mhFourEightKRec\,\%$ on four branches and from $\mhEightOneRec$ to
-$\mhEightEightKRec\,\%$ on eight: best-of-$K$ needs one correct proposal,
-whereas covering the solution set needs one head per branch. Which branches
-are covered varies from seed to seed. On the four-branch set, a head that
+With three seeds per configuration these results are descriptive. With $K=1$
+the loss contains no data term, so nothing pulls the single output towards the
+average of the branches: in two of three seeds on each data set it settles on
+one branch and reaches 0.33--0.44\,mm, and in the third it stalls between
+branches at 4.4 and 8.8\,mm. This suggests that the collapse to the average
+reported in the original ablation (911\,mm) comes from the supervised data
+term on mixed labels rather than from the single-output architecture. From
+$K=2$ every run is sub-millimetre (0.26--0.62\,mm) and the error does not
+improve systematically with more heads. Recall grows with $K$, from
+$\mhFourOneRec$ to $\mhFourEightKRec\,\%$ on four branches and from
+$\mhEightOneRec$ to $\mhEightEightKRec\,\%$ on eight, against ceilings of
+$\mhFourOneCeil$ to $\mhFourEightKCeil\,\%$ and $\mhEightOneCeil$ to
+$\mhEightEightKCeil\,\%$: best-of-$K$ needs one correct proposal, whereas
+covering the solution set needs one head per branch. Which branches are
+covered varies from seed to seed. On the four-branch set, a head that
 lands on an elbow-down solution counts as a miss, because those branches are
 absent from that data set. This is the likely reason one $K=1$ run reaches
 0.44\,mm with zero recall; the weights of these runs were not stored, so it
@@ -400,24 +412,25 @@ was not checked directly.
 \begin{table}[t]
 \centering\small
 \caption{Multi-head IK on branch-mixed data, test split, mean $\pm$ standard
-deviation over seeds (\repo{results/seed_study/B_*.json, D_*.json}). Recall is
-the share of existing branches reproduced within 0.25\,rad by at least one head.}
+deviation over three seeds (\repo{results/seed_study/B_*.json, D_*.json}).
+Recall: share of valid branches that at least one head lies within 0.25\,rad of;
+ceiling: highest recall attainable with $K$ heads on the test targets.}
 \label{tab:mh}
-\begin{tabular}{llccc}
+\begin{tabular}{llcccc}
 \toprule
-Data & $K$ & Position (mm) & Orientation (deg) & Branch recall (\%) \\
+Data & $K$ & Position (mm) & Orientation (deg) & Recall (\%) & Ceiling (\%) \\
 \midrule
 \multirow{4}{*}{4 branches (B)}
- & 1 & $\mhFourOnePos$ & $\mhFourOneRot$ & $\mhFourOneRec$ \\
- & 2 & $\mhFourTwoPos$ & $\mhFourTwoRot$ & $\mhFourTwoRec$ \\
- & 4 & $\mhFourFourKPos$ & $\mhFourFourKRot$ & $\mhFourFourKRec$ \\
- & 8 & $\mhFourEightKPos$ & $\mhFourEightKRot$ & $\mhFourEightKRec$ \\
+ & 1 & $\mhFourOnePos$ & $\mhFourOneRot$ & $\mhFourOneRec$ & $\mhFourOneCeil$ \\
+ & 2 & $\mhFourTwoPos$ & $\mhFourTwoRot$ & $\mhFourTwoRec$ & $\mhFourTwoCeil$ \\
+ & 4 & $\mhFourFourKPos$ & $\mhFourFourKRot$ & $\mhFourFourKRec$ & $\mhFourFourKCeil$ \\
+ & 8 & $\mhFourEightKPos$ & $\mhFourEightKRot$ & $\mhFourEightKRec$ & $\mhFourEightKCeil$ \\
 \midrule
 \multirow{4}{*}{8 branches (D)}
- & 1 & $\mhEightOnePos$ & $\mhEightOneRot$ & $\mhEightOneRec$ \\
- & 2 & $\mhEightTwoPos$ & $\mhEightTwoRot$ & $\mhEightTwoRec$ \\
- & 4 & $\mhEightFourKPos$ & $\mhEightFourKRot$ & $\mhEightFourKRec$ \\
- & 8 & $\mhEightEightKPos$ & $\mhEightEightKRot$ & $\mhEightEightKRec$ \\
+ & 1 & $\mhEightOnePos$ & $\mhEightOneRot$ & $\mhEightOneRec$ & $\mhEightOneCeil$ \\
+ & 2 & $\mhEightTwoPos$ & $\mhEightTwoRot$ & $\mhEightTwoRec$ & $\mhEightTwoCeil$ \\
+ & 4 & $\mhEightFourKPos$ & $\mhEightFourKRot$ & $\mhEightFourKRec$ & $\mhEightFourKCeil$ \\
+ & 8 & $\mhEightEightKPos$ & $\mhEightEightKRot$ & $\mhEightEightKRec$ & $\mhEightEightKCeil$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -426,18 +439,19 @@ Data & $K$ & Position (mm) & Orientation (deg) & Branch recall (\%) \\
 \centering
 \includegraphics[width=0.9\linewidth]{figures/multihead.pdf}
 \caption{Multi-head sweep. Points are seeds, short bars medians. Left: test
-position error (log scale). Right: share of existing branches recovered.}
+position error (log scale). Right: branch recall.}
 \label{fig:mh}
 \end{figure}
 
 \subsection{Solver benchmark}
 Figure~\ref{fig:bench} and Table~\ref{tab:bench} compare solve times on 200
 targets. The closed form is the fastest at $\benchCfMed$\,ms. The single-output
-network takes $\benchNnOneMed$\,ms, $\benchSlowerCf\times$ slower, and is
-$\benchFasterIkpy\times$ faster than IKPy. Damped least squares from a single
-start converges to sub-micron accuracy or stalls in a local minimum, and fails
-on $\benchDlsOneFail\,\%$ of targets; eight restarts remove the failures at
-roughly twice the cost. The two-head network is $\benchTwoHeadsSlower\times$
+network takes $\benchNnOneMed$\,ms, $\benchSlowerCf\times$ slower. The two
+generic iterative solvers behave alike from the rest configuration: damped
+least squares fails on $\benchDlsOneFail\,\%$ of targets and IKPy, solving the
+same pose problem, on $\benchIkpyFail\,\%$, both stalling in local minima. IKPy
+takes $\benchIkpyMed$\,ms, $\benchFasterIkpy\times$ the network's time; eight
+restarts remove the failures of damped least squares at roughly twice its cost. The two-head network is $\benchTwoHeadsSlower\times$
 slower than the single-output one, mostly because inference must run the FK on
 every proposal.
 
@@ -456,16 +470,17 @@ Solver & Median & p95 & Fail. \\
 Closed form & $\benchCfMed$ & $\benchCfPninetyfive$ & $\benchCfFail$ \\
 Network, 1 out. & $\benchNnOneMed$ & $\benchNnOnePninetyfive$ & $\benchNnOneFail$ \\
 Network, 2 heads & $\benchNnTwoMed$ & $\benchNnTwoPninetyfive$ & $\benchNnTwoFail$ \\
-IKPy$^{*}$ & $\benchIkpyMed$ & $\benchIkpyPninetyfive$ & $\benchIkpyFail$ \\
+IKPy & $\benchIkpyMed$ & $\benchIkpyPninetyfive$ & $\benchIkpyFail$ \\
 DLS, 1 start & $\benchDlsOneMed$ & $\benchDlsOnePninetyfive$ & $\benchDlsOneFail$ \\
 DLS, 8 restarts & $\benchDlsEightMed$ & $\benchDlsEightPninetyfive$ & $\benchDlsEightFail$ \\
 \bottomrule
 \end{tabular}
 \end{minipage}
-\caption{Solve time per target, one thread, after 200 warm-up calls
-(\repo{checkpoints/benchmark_solveurs.json}). $^{*}$IKPy is timed on targets
-from its own URDF model. Network errors on these targets: $\benchNnOneErr\mm$
-(single output) and $\benchNnTwoErr\mm$ (two heads), median.}
+\caption{Solve time per target (bars: median; whiskers: 95th percentile) on the
+same 200 pose targets, one thread, after
+200 warm-up calls on other targets (\repo{results/benchmark/benchmark.json}).
+Failure: more than 1\,mm or $0.1^\circ$ from the requested pose. Median network
+errors: $\benchNnOneErr\mm$ (single output) and $\benchNnTwoErr\mm$ (two heads).}
 \label{fig:bench}\label{tab:bench}
 \end{figure}
 
@@ -489,12 +504,10 @@ no solution exists.}
 \end{figure}
 
 \paragraph{Continuity.}
-Along a 400-sample circle of radius 0.12\,m inside the workspace, the closed
-form on a fixed branch, the closed form taking the first valid branch and the
-network give identical joint-space steps (median 0.0084\,rad, maximum
-0.0109\,rad) and no branch change. With the tool pointing down, the preferred
-branch is valid wherever the target is reachable, so the network has no
-continuity advantage on this task.
+Along a 400-sample circle inside the workspace, the network and the closed form
+give identical joint-space steps (median 0.0084\,rad) and no branch change. With
+the tool pointing down the preferred branch is valid everywhere on the path, so
+the network has no continuity advantage here.
 
 \subsection{Closed-loop simulation}
 In Webots (Figure~\ref{fig:webots}) the arm locates the cube with its camera
@@ -502,13 +515,14 @@ and the network solves every move to the cube and to the tray; only the camera
 reading pose, outside the training box, uses the closed form. A campaign that
 drives the arm to the same target with both solvers and compares the poses
 reached in the physics engine measured $0.30\mm$ at the grasp point and 7 to
-11\,mm above the tray, which lies outside the training box. These figures were
-obtained with an earlier checkpoint trained without the orientation term and
-have not been repeated with the deployed one. On the perception side, the
-homography reduces the pixel-to-table residual to 1.1\,mm median, from 148\,mm
-with the constants of the original scene; a colour-threshold detector locates
-the cube within 8\,mm against 49\,mm for a VGG16 regressor on the same 200
-images, so the regressor was dropped.
+11\,mm above the tray. The tray, at $x=-0.20$\,m, lies outside the training
+box, yet the network drives the arm there. These figures were obtained with an
+earlier checkpoint trained without the orientation term and have not been
+repeated with the deployed one. A homography fitted on a calibration grid maps
+pixels to the table with a 1.1\,mm median residual. A colour-threshold detector
+located the cube within 8\,mm, against 49\,mm for a VGG16 regressor, which was
+dropped; since a file-path error that silently disabled the camera was fixed,
+the camera loop has not been re-run in simulation.
 
 \begin{figure}[t]
 \centering
@@ -523,8 +537,7 @@ by the closed form (green cube).}
 %=============================================================================
 \paragraph{What the results support.}
 A position-IK network trained through a differentiable FK reaches about
-0.2\,mm on held-out targets inside its training box, which is enough for the
-gripper in the simulated pick-and-place loop. A loss computed on the reached
+0.2\,mm on held-out targets inside its training box. A loss computed on the reached
 pose, rather than on joint labels, lets the network cope with a multi-valued
 inverse: one head picks a branch on its own most of the time, and several
 heads trained without labels cover a growing share of the solution set.
@@ -540,8 +553,12 @@ heads trained without labels cover a growing share of the solution set.
 \item \emph{Speed.} The network is $\benchSlowerCf\times$ slower than the closed
   form. Its speed advantage holds only against generic iterative solvers.
 \item \emph{Safety.} Outside the training box the error grows by orders of
-  magnitude and the network gives no signal. A reachability check must sit in
-  front of it.
+  magnitude and the network gives no signal. A reachability and domain check
+  must sit in front of it; the present pick-and-place loop does not have one
+  and sends the network to the tray, outside its training box.
+\item \emph{Closed-loop accuracy of the deployed model.} The only closed-loop
+  measurement predates the deployed checkpoint, and the camera loop has not
+  been re-run since the path fix.
 \item \emph{Multi-head trade-off.} On this task, fixing the branch in the data
   generator is simpler and more accurate than learning it; the multi-head
   model becomes useful when the branch cannot be chosen in advance, for
@@ -552,9 +569,7 @@ heads trained without labels cover a growing share of the solution set.
   checked, so some elbow-down solutions may not be executable.
 \item \emph{Scope of measurement.} Results come from kinematic evaluation and
   one simulator; the closed-loop figures predate the deployed checkpoint, and
-  the workspace map is a single horizontal slice. IKPy's URDF and our DH table
-  describe the arm in different zero configurations, which we did not
-  reconcile.
+  the workspace map is a single horizontal slice.
 \item \emph{Naming.} The loss contains no dynamics or differential operator;
   ``physics-informed'' here means kinematics-informed.
 \end{itemize}
@@ -564,10 +579,10 @@ heads trained without labels cover a growing share of the solution set.
 %=============================================================================
 On a single IK branch, backpropagating the end-effector error through an exact
 differentiable FK did not give a reliable gain over joint regression once
-seeds and a held-out test set were taken into account. Its value showed on the
-multi-valued problem: a pose-based loss avoids the collapse to the average of
-the branches, and a relaxed winner-take-all multi-head network covers more of
-the solution set without labels, at no gain in accuracy. The network remains
+seeds and a held-out test set were taken into account. On mixed data, only a
+pose loss trains without labels; a single head avoided the collapse to the
+average in four of six runs, and a relaxed winner-take-all multi-head network
+covered more of the solution set, at no gain in accuracy. The network remains
 slower than the closed form and unsafe outside its domain. Natural next steps are an orientation input for pose IK, an
 explicit reachability or confidence output, joint-limit and collision checks
 on the recovered branches, and repeating the closed-loop measurement with the
@@ -588,14 +603,15 @@ Command & Time \\
 \texttt{python experiments/verify\_paper.py} & 1 min \\
 \texttt{python experiments/seed\_study.py} (Parts A--C) & 3 h \\
 \texttt{SEED\_PART=D python experiments/seed\_study.py} & 2.5 h \\
-\texttt{python experiments/benchmark\_solveurs.py} & 4 min \\
+\texttt{python experiments/benchmark\_solveurs.py} & 6 min \\
 \texttt{python experiments/mesure\_continuite.py} & 1 min \\
 \texttt{python paper/make\_figures.py \&\& python paper/make\_numbers.py} & 4 min \\
 \texttt{cd paper \&\& latexmk -pdf main.tex} & 1 min \\
 \bottomrule
 \end{tabular}
 \end{center}
-Every number in this paper is either typed from a file named in the text or
+Every number in this paper is either copied by hand from the file cited next
+to it or
 generated into \repo{paper/numbers.tex} by \repo{paper/make_numbers.py}.
 
 \bibliographystyle{plainnat}
