@@ -1,0 +1,44 @@
+{
+  "fingerprint": "13c3415230b65cf3",
+  "n_targets": 20201,
+  "epochs": 100,
+  "split": [
+    16160,
+    2020,
+    2021
+  ],
+  "split_seed": 1234,
+  "torch": "2.8.0+cpu",
+  "branches_per_target": 5.446463046383842,
+  "branch_availability": {
+    "left-up-up": 1.0,
+    "left-up-down": 1.0,
+    "left-down-up": 0.3616,
+    "left-down-down": 0.3616,
+    "right-up-up": 1.0,
+    "right-up-down": 1.0,
+    "right-down-up": 0.3616,
+    "right-down-down": 0.3616
+  },
+  "part": "D",
+  "K": 8,
+  "seed": 0,
+  "val_pos_mm": 0.257458770647645,
+  "val_rot_deg": 0.20341317355632782,
+  "epoch": 93,
+  "test_pos_mm": 0.2577822597231716,
+  "test_rot_deg": 0.19967125356197357,
+  "recall": 0.4263302752293578,
+  "recall_per_branch": {
+    "left-up-up": 0.9995,
+    "left-up-down": 0.0,
+    "left-down-up": 0.0,
+    "left-down-down": 0.9304,
+    "right-up-up": 0.9758,
+    "right-up-down": 0.0,
+    "right-down-up": 0.0,
+    "right-down-down": 0.0
+  },
+  "n_params": 1590320,
+  "seconds": 749.5
+}

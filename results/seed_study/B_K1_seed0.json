@@ -1,0 +1,29 @@
+{
+  "fingerprint": "b9e74b3f67cbfc10",
+  "n_targets": 20201,
+  "epochs": 100,
+  "split": [
+    16160,
+    2020,
+    2021
+  ],
+  "split_seed": 1234,
+  "torch": "2.8.0+cpu",
+  "part": "B",
+  "K": 1,
+  "seed": 0,
+  "val_pos_mm": 4.4307284988462925,
+  "val_rot_deg": 4.650497913360596,
+  "epoch": 96,
+  "test_pos_mm": 4.380649887025356,
+  "test_rot_deg": 4.735836982727051,
+  "recall": 0.014862385321100917,
+  "recall_per_branch": {
+    "left-up-up": 0.0,
+    "left-down-up": 0.1151,
+    "right-up-up": 0.0,
+    "right-down-up": 0.0
+  },
+  "n_params": 660230,
+  "seconds": 482.8
+}

@@ -1,0 +1,21 @@
+{
+  "fingerprint": "b9e74b3f67cbfc10",
+  "n_targets": 20201,
+  "epochs": 100,
+  "split": [
+    16160,
+    2020,
+    2021
+  ],
+  "split_seed": 1234,
+  "torch": "2.8.0+cpu",
+  "part": "A",
+  "w_phys": 1.0,
+  "seed": 2,
+  "val_pos_mm": 0.23319733736570925,
+  "val_rot_deg": 0.010227392427623272,
+  "epoch": 86,
+  "test_pos_mm": 0.23484069970436394,
+  "test_rot_deg": 0.010270644910633564,
+  "seconds": 400.9
+}

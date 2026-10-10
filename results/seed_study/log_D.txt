@@ -1,0 +1,33 @@
+20201 targets | fingerprint b9e74b3f67cbfc10 | split [16160, 2020, 2021] | 100 epochs | out D:\Work\Pinn_Ur5\results\seed_study
+  generating the 8-branch dataset (~11 min)...
+D:\Work\Pinn_Ur5\src\control\ur5.py:406: RuntimeWarning: invalid value encountered in sqrt
+  [math.atan2(-np.sqrt(1 - D**2), D),
+D:\Work\Pinn_Ur5\src\control\ur5.py:407: RuntimeWarning: invalid value encountered in sqrt
+  math.atan2(np.sqrt(1 - D**2), D)]
+  done in 687 s
+[D] K=1 seed=0 (8-branch data)
+    test 8.8018 mm / 18.0440 deg, recall 0.059 (ep 74, 320 s)
+[D] K=2 seed=0 (8-branch data)
+    test 0.4654 mm / 0.3191 deg, recall 0.185 (ep 52, 368 s)
+[D] K=4 seed=0 (8-branch data)
+    test 0.3554 mm / 0.2913 deg, recall 0.488 (ep 98, 458 s)
+[D] K=8 seed=0 (8-branch data)
+    test 0.2578 mm / 0.1997 deg, recall 0.426 (ep 93, 750 s)
+[D] K=1 seed=1 (8-branch data)
+20201 targets | fingerprint b9e74b3f67cbfc10 | split [16160, 2020, 2021] | 100 epochs | out D:\Work\Pinn_Ur5\results\seed_study
+[D] K=1 seed=1 (8-branch data)
+    test 0.3951 mm / 0.3080 deg, recall 0.184 (ep 98, 620 s)
+[D] K=2 seed=1 (8-branch data)
+    test 0.4014 mm / 0.3176 deg, recall 0.245 (ep 98, 704 s)
+[D] K=4 seed=1 (8-branch data)
+    test 0.3509 mm / 0.2619 deg, recall 0.416 (ep 100, 830 s)
+[D] K=8 seed=1 (8-branch data)
+    test 0.3050 mm / 0.2653 deg, recall 0.485 (ep 100, 843 s)
+[D] K=1 seed=2 (8-branch data)
+    test 0.3498 mm / 0.2948 deg, recall 0.184 (ep 98, 476 s)
+[D] K=2 seed=2 (8-branch data)
+    test 0.3713 mm / 0.2865 deg, recall 0.368 (ep 100, 539 s)
+[D] K=4 seed=2 (8-branch data)
+    test 0.6217 mm / 0.6149 deg, recall 0.231 (ep 100, 425 s)
+[D] K=8 seed=2 (8-branch data)
+    test 0.3508 mm / 0.2909 deg, recall 0.608 (ep 97, 540 s)

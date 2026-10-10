@@ -1,0 +1,76 @@
+{
+  "fk_torch_vs_numpy": {
+    "n": 1000,
+    "max_position_diff_m": 2.482534153247273e-16,
+    "max_rotation_entry_diff": 3.3306690738754696e-16
+  },
+  "jacobian_vs_finite_differences": {
+    "n": 200,
+    "max_abs_diff": 3.162379247356739e-10,
+    "mean_abs_diff": 1.4723248543957456e-10,
+    "rest_manipulability": 0.02866328538266886,
+    "rest_condition": 16.492006157561793,
+    "extended_manipulability": 0.0
+  },
+  "closed_form_roundtrip": {
+    "n_targets": 2000,
+    "branches": {
+      "left-up-up": {
+        "finite": 1627,
+        "off_by_more_than_1mm": 0,
+        "worst_mm": 0.0
+      },
+      "left-up-down": {
+        "finite": 1627,
+        "off_by_more_than_1mm": 0,
+        "worst_mm": 0.0
+      },
+      "left-down-up": {
+        "finite": 613,
+        "off_by_more_than_1mm": 0,
+        "worst_mm": 0.0
+      },
+      "left-down-down": {
+        "finite": 613,
+        "off_by_more_than_1mm": 0,
+        "worst_mm": 0.0
+      },
+      "right-up-up": {
+        "finite": 1627,
+        "off_by_more_than_1mm": 0,
+        "worst_mm": 0.0
+      },
+      "right-up-down": {
+        "finite": 1627,
+        "off_by_more_than_1mm": 0,
+        "worst_mm": 0.0
+      },
+      "right-down-up": {
+        "finite": 613,
+        "off_by_more_than_1mm": 0,
+        "worst_mm": 0.0
+      },
+      "right-down-down": {
+        "finite": 613,
+        "off_by_more_than_1mm": 0,
+        "worst_mm": 0.0
+      }
+    }
+  },
+  "split": {
+    "fingerprint": "b9e74b3f67cbfc10",
+    "sizes": [
+      16160,
+      2020,
+      2021
+    ],
+    "disjoint": true,
+    "covers_all": true,
+    "test_to_train_nn_mm": {
+      "min": 0.7720404267311096,
+      "median": 8.386506080627441
+    }
+  },
+  "torch": "2.8.0+cpu",
+  "numpy": "2.2.6"
+}

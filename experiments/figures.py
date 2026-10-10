@@ -7,7 +7,9 @@ experiences : si une mesure bouge, il suffit de relancer ce script.
 
     python experiments/figures.py
 
-Sortie : assets/fig_ablation.svg et assets/fig_benchmark.svg
+Sortie : assets/fig_benchmark.svg et assets/fig_architecture.svg. Les figures
+d'ablation et de multi-tetes viennent de paper/make_figures.py (campagne
+multi-graines, jeu de test).
 """
 import json
 import os
@@ -35,55 +37,6 @@ def texte(x, y, s, taille=14, couleur=NOIR, ancre='start', gras=False):
 def barre(x, y, w, h, couleur, bord=None):
     b = f' stroke="{bord}" stroke-width="2"' if bord else ''
     return f'<rect x="{x}" y="{y}" width="{max(w, 1):.1f}" height="{h}" rx="3" fill="{couleur}"{b}/>'
-
-
-# =====================================================================
-# Figure 1 : ce que la perte physique apporte
-# =====================================================================
-def figure_ablation():
-    chemin = os.path.join(_ROOT, 'checkpoints', 'ablation_physics_loss.json')
-    res = {r['nom']: r for r in json.load(open(chemin))['resultats']}
-
-    sup = res['branche unique | w_phys=0']['best_pos_mm']
-    phy = res['branche unique | w_phys=1']['best_pos_mm']
-    gain = (sup - phy) / sup
-
-    W, H = 860, 330
-    X0, LARG = 300, 420
-    echelle = LARG / sup
-
-    p = [entete(W, H)]
-    p.append(texte(40, 44, 'Effect of the physics term on validation error', 19, NOIR, gras=True))
-    p.append(texte(40, 68, 'Same data, seed, architecture and schedule. Only the loss differs.',
-                   13, GRIS))
-
-    for i, (nom, val, couleur, bord) in enumerate([
-            ('Supervised only', sup, '#d1d5db', None),
-            ('Physics-informed', phy, ACCENT, None)]):
-        y = 118 + i * 74
-        p.append(texte(X0 - 18, y + 30, nom, 15, NOIR, 'end',
-                       gras=(i == 1)))
-        p.append(barre(X0, y, val * echelle, 44, couleur, bord))
-        p.append(texte(X0 + val * echelle + 14, y + 30,
-                       f'{val:.3f} mm', 15, NOIR if i == 1 else GRIS,
-                       gras=(i == 1)))
-
-    # fleche de gain
-    p.append(f'<line x1="{X0 + phy * echelle}" y1="272" x2="{X0 + sup * echelle}" '
-             f'y2="272" stroke="{ACCENT}" stroke-width="2"/>')
-    p.append(f'<polygon points="{X0 + phy * echelle},272 {X0 + phy * echelle + 11},266 '
-             f'{X0 + phy * echelle + 11},278" fill="{ACCENT}"/>')
-    p.append(texte((X0 + phy * echelle + X0 + sup * echelle) / 2, 262,
-                   f'{gain:.0%} reduction', 15, ACCENT, 'middle', gras=True))
-
-    p.append(texte(40, 308, f"20,201 targets, one IK branch, 100 epochs. "
-                            f"The mixed-branch case and w_phys = 20 are in docs/experiments.md.",
-                   12, GRIS_CLAIR))
-    p.append('</svg>')
-
-    out = os.path.join(ASSETS, 'fig_ablation.svg')
-    open(out, 'w', encoding='utf-8').write('\n'.join(p))
-    print(f"  {out}  ({sup:.3f} -> {phy:.3f} mm, {gain:.0%})")
 
 
 # =====================================================================
@@ -238,62 +191,10 @@ def figure_architecture():
     print(f"  {out}  ({n_params} parametres)")
 
 
-# =====================================================================
-# Figure 4 : nombre de tetes, precision et couverture des branches
-# =====================================================================
-def figure_multihead():
-    import math
-    lignes = []
-    for k in (1, 2, 4, 8):
-        d = json.load(open(os.path.join(_ROOT, 'checkpoints', f'multihypothesis_K{k}.json')))
-        lignes.append((k, d['position_mm'], d['rappel_global']))
-
-    W, H = 900, 356
-    p = [entete(W, H)]
-    p.append(texte(40, 40, 'Multi-head IK on branch-mixed data, no branch labels', 19, NOIR,
-                   gras=True))
-    p.append(texte(40, 63, 'Same cached dataset, seed and 100 epochs for every K. '
-                           'Best-of-K selection by forward kinematics.', 13, GRIS))
-
-    # panneau gauche : erreur de position, echelle log
-    X0, Y0, LARG, HAUT = 70, 110, 330, 160
-    lo, hi = math.log10(0.1), math.log10(20)
-    p.append(texte(X0, Y0 - 14, 'position error (mm, log scale)', 13, NOIR, gras=True))
-    for i, (k, err, _) in enumerate(lignes):
-        x = X0 + i * (LARG / 4) + 14
-        hb = (math.log10(err) - lo) / (hi - lo) * HAUT
-        meilleur = err == min(e for _, e, _ in lignes)
-        p.append(barre(x, Y0 + HAUT - hb, 52, hb, ACCENT if meilleur else '#d1d5db'))
-        p.append(texte(x + 26, Y0 + HAUT - hb - 8, f'{err:.3f}' if err < 1 else f'{err:.2f}',
-                       12, NOIR if meilleur else GRIS, 'middle', gras=meilleur))
-        p.append(texte(x + 26, Y0 + HAUT + 20, f'K = {k}', 12, GRIS, 'middle'))
-
-    # panneau droit : rappel des branches
-    X1 = 500
-    p.append(texte(X1, Y0 - 14, 'branches recovered (of those that exist)', 13, NOIR,
-                   gras=True))
-    for i, (k, _, rap) in enumerate(lignes):
-        x = X1 + i * (LARG / 4) + 14
-        hb = rap * HAUT
-        p.append(barre(x, Y0 + HAUT - hb, 52, max(hb, 1), ACCENT if k == 8 else '#d1d5db'))
-        p.append(texte(x + 26, Y0 + HAUT - hb - 8, f'{rap:.0%}', 12,
-                       NOIR if k == 8 else GRIS, 'middle', gras=(k == 8)))
-        p.append(texte(x + 26, Y0 + HAUT + 20, f'K = {k}', 12, GRIS, 'middle'))
-
-    p.append(texte(40, H - 22, 'Two heads give the best single answer; '
-                               'more heads are needed to recover the solution set.',
-                   12, GRIS))
-    p.append('</svg>')
-
-    out = os.path.join(ASSETS, 'fig_multihead.svg')
-    open(out, 'w', encoding='utf-8').write('\n'.join(p))
-    print(f"  {out}  (K = 1, 2, 4, 8)")
-
-
 if __name__ == "__main__":
     os.makedirs(ASSETS, exist_ok=True)
     print("Figures generees depuis les fichiers de resultats :")
-    figure_ablation()
     figure_benchmark()
     figure_architecture()
-    figure_multihead()
+    # fig_ablation.svg and fig_multihead.svg now come from the multi-seed
+    # results: python paper/make_figures.py

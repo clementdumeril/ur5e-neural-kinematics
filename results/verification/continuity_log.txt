@@ -1,0 +1,33 @@
+D:\Work\Pinn_Ur5\src\control\ur5.py:406: RuntimeWarning: invalid value encountered in sqrt
+  [math.atan2(-np.sqrt(1 - D**2), D),
+D:\Work\Pinn_Ur5\src\control\ur5.py:407: RuntimeWarning: invalid value encountered in sqrt
+  math.atan2(np.sqrt(1 - D**2), D)]
+==============================================================================
+CONTINUITE le long d'un cercle de rayon 0.12 m, 400 echantillons
+==============================================================================
+
+Echecs de resolution : branche figee 0/400, premiere valide 0/400
+
+Saut articulaire entre deux poses consecutives :
+  analytique, branche figee          median  0.0084   p95  0.0108   max   0.0109 rad
+  analytique, premiere valide        median  0.0084   p95  0.0108   max   0.0109 rad
+  reseau (PINN)                      median  0.0084   p95  0.0108   max   0.0109 rad
+
+Changements de branche (voie 2) : 0 sur 399 pas
+
+Suivi de la cible par le reseau : median 0.140 mm, max 0.333 mm
+
+------------------------------------------------------------------------------
+COMPORTEMENT AU BORD DE L'ESPACE ATTEIGNABLE (y = -0,70 ; z = 0,25)
+------------------------------------------------------------------------------
+       x   analytique               erreur de la pose rendue
+   +0.40   solution                                 0.2 mm
+   +0.50   solution                                 2.0 mm
+   +0.55   exception (echec franc)                  68.2 mm
+   +0.60   exception (echec franc)                 389.0 mm
+   +0.70   exception (echec franc)                1460.1 mm
+
+-> Le reseau ne signale jamais l'echec. C'est un DEFAUT, pas un
+   avantage : un solveur qui se tait quand il sort de son domaine
+   est plus dangereux qu'un solveur qui leve une exception.
+==============================================================================

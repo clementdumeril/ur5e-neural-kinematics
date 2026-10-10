@@ -424,10 +424,12 @@ def inverse_kinematics(th: "np.ndarray", shoulder="left", wrist="down", elbow="u
             / (2 * a2 * np.sqrt(p31_x**2 + p31_y**2))
         )
         T2 = np.array([-delta + epsilon, -delta - epsilon])
-        if shoulder == "left":
-            theta2 = T2[0]
-        else:
-            theta2 = T2[1]
+        # theta2 must follow the elbow choice made for theta3. The inherited
+        # code chose it from the shoulder only, so every elbow="down" solution
+        # was finite but wrong (about 0.78 m off). Found while writing
+        # paper/main.tex; see results/verification/.
+        flip = (shoulder == "left") != (elbow == "up")
+        theta2 = T2[1] if flip else T2[0]
 
         # Theta 4
         th21 = transform(theta2, 1)

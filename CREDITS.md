@@ -18,6 +18,14 @@ Inherited from it:
   generator, and the Webots device wrappers;
 - the original idea of locating the target with a VGG16-based CNN.
 
+**Correction to the inherited code.** The upstream closed-form IK chooses
+`theta2` from the shoulder configuration only, while `theta3` depends on the
+elbow. Every `elbow="down"` solution is therefore finite but wrong, about
+0.78 m from the target. The same lines are in the upstream repository
+(`ur5.py`, the "Theta 2" block of `inverse_kinematics`). This repository pairs
+`theta2` with the elbow choice; `tests/test_smoke.py` round-trips all eight
+branches. No change has been proposed upstream.
+
 ## Developed in this project
 
 Everything below was written here, and is what the README's results refer to.

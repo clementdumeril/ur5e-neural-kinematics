@@ -1,0 +1,321 @@
+% references.bib -- every entry checked against an authoritative source (2026-10-09).
+
+% ---------------------------------------------------------------------------
+% Physics-informed learning
+% ---------------------------------------------------------------------------
+
+% verified via Crossref API (doi 10.1016/j.jcp.2018.10.045)
+@article{raissi2019pinn,
+  author  = {Raissi, M. and Perdikaris, P. and Karniadakis, G. E.},
+  title   = {Physics-informed neural networks: A deep learning framework for solving forward and inverse problems involving nonlinear partial differential equations},
+  journal = {Journal of Computational Physics},
+  volume  = {378},
+  pages   = {686--707},
+  year    = {2019},
+  doi     = {10.1016/j.jcp.2018.10.045}
+}
+
+% verified via Crossref API (doi 10.1038/s42254-021-00314-5)
+@article{karniadakis2021piml,
+  author  = {Karniadakis, George Em and Kevrekidis, Ioannis G. and Lu, Lu and Perdikaris, Paris and Wang, Sifan and Yang, Liu},
+  title   = {Physics-informed machine learning},
+  journal = {Nature Reviews Physics},
+  volume  = {3},
+  number  = {6},
+  pages   = {422--440},
+  year    = {2021},
+  doi     = {10.1038/s42254-021-00314-5}
+}
+
+% ---------------------------------------------------------------------------
+% Learning inverse kinematics / distal teacher
+% ---------------------------------------------------------------------------
+
+% verified via Crossref API (doi 10.1207/s15516709cog1603_1)
+@article{jordan1992distal,
+  author  = {Jordan, Michael I. and Rumelhart, David E.},
+  title   = {Forward Models: Supervised Learning with a Distal Teacher},
+  journal = {Cognitive Science},
+  volume  = {16},
+  number  = {3},
+  pages   = {307--354},
+  year    = {1992},
+  doi     = {10.1207/s15516709cog1603_1}
+}
+
+% verified via Crossref API (doi 10.1109/IROS.2001.973374; IROS-01, Maui, HI, vol. 1, pp. 298-303)
+@inproceedings{dsouza2001learning,
+  author    = {D'Souza, A. and Vijayakumar, S. and Schaal, S.},
+  title     = {Learning inverse kinematics},
+  booktitle = {Proceedings of the 2001 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
+  volume    = {1},
+  pages     = {298--303},
+  address   = {Maui, HI, USA},
+  publisher = {IEEE},
+  year      = {2001},
+  doi       = {10.1109/IROS.2001.973374}
+}
+
+% verified via Crossref API (doi 10.1016/j.protcy.2013.12.451)
+@article{duka2014neural,
+  author  = {Duka, Adrian-Vasile},
+  title   = {Neural Network based Inverse Kinematics Solution for Trajectory Tracking of a Robotic Arm},
+  journal = {Procedia Technology},
+  volume  = {12},
+  pages   = {20--27},
+  year    = {2014},
+  doi     = {10.1016/j.protcy.2013.12.451}
+}
+
+% verified via Crossref API (doi 10.1007/978-3-031-44207-0_38) and arXiv 2307.11554
+% (method text checked: losses computed in Cartesian space by applying FK to the predicted configurations)
+@inproceedings{habekost2023cycleik,
+  author    = {Habekost, Jan-Gerrit and Strahl, Erik and Allgeuer, Philipp and Kerzel, Matthias and Wermter, Stefan},
+  title     = {{CycleIK}: Neuro-inspired Inverse Kinematics},
+  booktitle = {Artificial Neural Networks and Machine Learning -- ICANN 2023},
+  series    = {Lecture Notes in Computer Science},
+  pages     = {457--470},
+  publisher = {Springer Nature Switzerland},
+  year      = {2023},
+  doi       = {10.1007/978-3-031-44207-0_38}
+}
+
+% verified via Crossref API (doi 10.1109/LRA.2021.3068671) and arXiv 2011.05717
+% (method text checked: generator trained with an end-effector cost computed through forward kinematics, plus adversarial loss)
+@article{lembono2021constrained,
+  author  = {Lembono, Teguh Santoso and Pignat, Emmanuel and Jankowski, Julius and Calinon, Sylvain},
+  title   = {Learning Constrained Distributions of Robot Configurations With Generative Adversarial Network},
+  journal = {IEEE Robotics and Automation Letters},
+  volume  = {6},
+  number  = {2},
+  pages   = {4233--4240},
+  year    = {2021},
+  doi     = {10.1109/LRA.2021.3068671}
+}
+
+% ---------------------------------------------------------------------------
+% Multimodal / multi-hypothesis prediction
+% ---------------------------------------------------------------------------
+
+% verified via Aston Publications Explorer, eprint 373 (PDF file name NCRG_94_004.pdf)
+@techreport{bishop1994mdn,
+  author      = {Bishop, Christopher M.},
+  title       = {Mixture Density Networks},
+  institution = {Aston University},
+  address     = {Birmingham, UK},
+  type        = {Technical Report},
+  number      = {NCRG/94/004},
+  year        = {1994},
+  url         = {https://publications.aston.ac.uk/id/eprint/373/}
+}
+
+% verified via NeurIPS proceedings page and metadata JSON (pp. 1799-1807)
+@inproceedings{guzmanrivera2012mcl,
+  author    = {Guzman-Rivera, Abner and Batra, Dhruv and Kohli, Pushmeet},
+  title     = {Multiple Choice Learning: Learning to Produce Multiple Structured Outputs},
+  booktitle = {Advances in Neural Information Processing Systems 25 (NIPS 2012)},
+  pages     = {1799--1807},
+  year      = {2012},
+  url       = {https://proceedings.neurips.cc/paper_files/paper/2012/hash/cfbce4c1d7c425baf21d6b6f2babe6be-Abstract.html}
+}
+
+% verified via NeurIPS proceedings page and metadata JSON (pp. 2119-2127)
+@inproceedings{lee2016smcl,
+  author    = {Lee, Stefan and Purushwalkam Shiva Prakash, Senthil and Cogswell, Michael and Ranjan, Viresh and Crandall, David and Batra, Dhruv},
+  title     = {Stochastic Multiple Choice Learning for Training Diverse Deep Ensembles},
+  booktitle = {Advances in Neural Information Processing Systems 29 (NIPS 2016)},
+  pages     = {2119--2127},
+  year      = {2016},
+  url       = {https://proceedings.neurips.cc/paper_files/paper/2016/hash/20d135f0f28185b84a4cf7aa51f29500-Abstract.html}
+}
+
+% verified via Crossref API (doi 10.1109/ICCV.2017.388)
+@inproceedings{rupprecht2017uncertain,
+  author    = {Rupprecht, Christian and Laina, Iro and DiPietro, Robert and Baust, Maximilian and Tombari, Federico and Navab, Nassir and Hager, Gregory D.},
+  title     = {Learning in an Uncertain World: Representing Ambiguity Through Multiple Hypotheses},
+  booktitle = {Proceedings of the IEEE International Conference on Computer Vision (ICCV)},
+  pages     = {3611--3620},
+  publisher = {IEEE},
+  year      = {2017},
+  doi       = {10.1109/ICCV.2017.388}
+}
+
+% verified via Crossref API (doi 10.1109/LRA.2022.3181374)
+@article{ames2022ikflow,
+  author  = {Ames, Barrett and Morgan, Jeremy and Konidaris, George},
+  title   = {{IKFlow}: Generating Diverse Inverse Kinematics Solutions},
+  journal = {IEEE Robotics and Automation Letters},
+  volume  = {7},
+  number  = {3},
+  pages   = {7177--7184},
+  year    = {2022},
+  doi     = {10.1109/LRA.2022.3181374}
+}
+
+% verified via arXiv 1808.04730v3 (camera-ready PDF header: "Published as a conference paper at ICLR 2019")
+@inproceedings{ardizzone2019inn,
+  author    = {Ardizzone, Lynton and Kruse, Jakob and Wirkert, Sebastian and Rahner, Daniel and Pellegrini, Eric W. and Klessen, Ralf S. and Maier-Hein, Lena and Rother, Carsten and K{\"o}the, Ullrich},
+  title     = {Analyzing Inverse Problems with Invertible Neural Networks},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2019},
+  eprint        = {1808.04730},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/1808.04730}
+}
+
+% verified via Crossref API (doi 10.1145/358669.358692)
+@article{fischler1981ransac,
+  author  = {Fischler, Martin A. and Bolles, Robert C.},
+  title   = {Random sample consensus: A paradigm for model fitting with applications to image analysis and automated cartography},
+  journal = {Communications of the ACM},
+  volume  = {24},
+  number  = {6},
+  pages   = {381--395},
+  year    = {1981},
+  doi     = {10.1145/358669.358692}
+}
+
+% verified via Crossref API (doi 10.1017/CBO9780511811685; edition 2)
+@book{hartley2004mvg,
+  author    = {Hartley, Richard and Zisserman, Andrew},
+  title     = {Multiple View Geometry in Computer Vision},
+  edition   = {2nd},
+  publisher = {Cambridge University Press},
+  address   = {Cambridge, UK},
+  year      = {2004},
+  doi       = {10.1017/CBO9780511811685}
+}
+
+% ---------------------------------------------------------------------------
+% Classical numerical / analytic IK
+% ---------------------------------------------------------------------------
+
+% verified via Crossref API (doi 10.1109/TSMC.1986.289285)
+@article{wampler1986dls,
+  author  = {Wampler, Charles},
+  title   = {Manipulator Inverse Kinematic Solutions Based on Vector Formulations and Damped Least-Squares Methods},
+  journal = {IEEE Transactions on Systems, Man, and Cybernetics},
+  volume  = {16},
+  number  = {1},
+  pages   = {93--101},
+  year    = {1986},
+  doi     = {10.1109/TSMC.1986.289285}
+}
+
+% verified via Crossref API (doi 10.1115/1.3143764)
+@article{nakamura1986singularity,
+  author  = {Nakamura, Yoshihiko and Hanafusa, Hideo},
+  title   = {Inverse Kinematic Solutions With Singularity Robustness for Robot Manipulator Control},
+  journal = {Journal of Dynamic Systems, Measurement, and Control},
+  volume  = {108},
+  number  = {3},
+  pages   = {163--171},
+  year    = {1986},
+  doi     = {10.1115/1.3143764}
+}
+
+% verified via author's page https://mathweb.ucsd.edu/~sbuss/ResearchWeb/ikmethods/index.html
+% and the PDF itself (first page dated October 7, 2009; marked unpublished)
+@misc{buss2009iksurvey,
+  author       = {Buss, Samuel R.},
+  title        = {Introduction to Inverse Kinematics with {Jacobian} Transpose, Pseudoinverse and Damped Least Squares methods},
+  howpublished = {Unpublished survey, Department of Mathematics, University of California, San Diego},
+  year         = {2009},
+  note         = {Version dated October 7, 2009},
+  url          = {https://mathweb.ucsd.edu/~sbuss/ResearchWeb/ikmethods/iksurvey.pdf}
+}
+
+% verified via Georgia Tech repository (DSpace REST API record; handle 1853/50782, issued 2013-12-07, genre Technical Report)
+@techreport{hawkins2013ur,
+  author      = {Hawkins, Kelsey P.},
+  title       = {Analytic Inverse Kinematics for the {Universal Robots} {UR-5/UR-10} Arms},
+  institution = {Georgia Institute of Technology},
+  type        = {Technical Report},
+  year        = {2013},
+  url         = {http://hdl.handle.net/1853/50782}
+}
+
+% verified via Crossref API (doi 10.1115/1.4011045)
+@article{denavit1955kinematic,
+  author  = {Denavit, J. and Hartenberg, R. S.},
+  title   = {A Kinematic Notation for Lower-Pair Mechanisms Based on Matrices},
+  journal = {Journal of Applied Mechanics},
+  volume  = {22},
+  number  = {2},
+  pages   = {215--221},
+  year    = {1955},
+  doi     = {10.1115/1.4011045}
+}
+
+% verified via Crossref API (doi 10.1007/978-1-84628-642-1) and Springer book page (full title)
+@book{siciliano2009robotics,
+  author    = {Siciliano, Bruno and Sciavicco, Lorenzo and Villani, Luigi and Oriolo, Giuseppe},
+  title     = {Robotics: Modelling, Planning and Control},
+  series    = {Advanced Textbooks in Control and Signal Processing},
+  publisher = {Springer},
+  address   = {London},
+  year      = {2009},
+  doi       = {10.1007/978-1-84628-642-1}
+}
+
+% ---------------------------------------------------------------------------
+% Software, simulation, optimisation
+% ---------------------------------------------------------------------------
+
+% verified via Crossref API (doi 10.5772/5618; registered title includes the "Cyberbotics Ltd." prefix; article no. 5, no page range)
+@article{michel2004webots,
+  author  = {Michel, Olivier},
+  title   = {{Cyberbotics Ltd.} {Webots}\textsuperscript{TM}: Professional Mobile Robot Simulation},
+  journal = {International Journal of Advanced Robotic Systems},
+  volume  = {1},
+  number  = {1},
+  year    = {2004},
+  doi     = {10.5772/5618}
+}
+
+% verified via NeurIPS proceedings page and metadata JSON (pp. 8026-8037)
+@inproceedings{paszke2019pytorch,
+  author    = {Paszke, Adam and Gross, Sam and Massa, Francisco and Lerer, Adam and Bradbury, James and Chanan, Gregory and Killeen, Trevor and Lin, Zeming and Gimelshein, Natalia and Antiga, Luca and Desmaison, Alban and Kopf, Andreas and Yang, Edward and DeVito, Zachary and Raison, Martin and Tejani, Alykhan and Chilamkurthy, Sasank and Steiner, Benoit and Fang, Lu and Bai, Junjie and Chintala, Soumith},
+  title     = {{PyTorch}: An Imperative Style, High-Performance Deep Learning Library},
+  booktitle = {Advances in Neural Information Processing Systems 32 (NeurIPS 2019)},
+  pages     = {8026--8037},
+  year      = {2019},
+  url       = {https://proceedings.neurips.cc/paper_files/paper/2019/hash/bdbca288fee7f92f2bfa9f7012727740-Abstract.html}
+}
+
+% verified via arXiv API (1412.6980; comment: "Published as a conference paper at the 3rd International Conference for Learning Representations, San Diego, 2015")
+@inproceedings{kingma2015adam,
+  author        = {Kingma, Diederik P. and Ba, Jimmy},
+  title         = {Adam: A Method for Stochastic Optimization},
+  booktitle     = {3rd International Conference on Learning Representations (ICLR)},
+  address       = {San Diego, CA, USA},
+  year          = {2015},
+  eprint        = {1412.6980},
+  archivePrefix = {arXiv},
+  url           = {https://arxiv.org/abs/1412.6980}
+}
+
+% verified via Crossref API (doi 10.1016/j.neunet.2017.12.012)
+@article{elfwing2018silu,
+  author  = {Elfwing, Stefan and Uchibe, Eiji and Doya, Kenji},
+  title   = {Sigmoid-weighted linear units for neural network function approximation in reinforcement learning},
+  journal = {Neural Networks},
+  volume  = {107},
+  pages   = {3--11},
+  year    = {2018},
+  doi     = {10.1016/j.neunet.2017.12.012}
+}
+
+% verified via DataCite API (doi 10.5281/zenodo.6551105, resource type Software, creator Manceron, Pierre)
+% and the citation block in the official README at https://github.com/Phylliade/ikpy
+% (concept DOI covering all versions; DataCite lists the latest as v3.4.2, issued 2024-08-12)
+% Entry type misc rather than software, so that plainnat accepts it.
+@misc{manceron_ikpy,
+  author       = {Manceron, Pierre},
+  title        = {{IKPy}},
+  howpublished = {Software, \url{https://github.com/Phylliade/ikpy}},
+  note         = {Concept DOI; version 4.0.0 was used in this work},
+  publisher    = {Zenodo},
+  year         = {2024},
+  doi          = {10.5281/zenodo.6551105}
+}

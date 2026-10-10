@@ -1,6 +1,8 @@
 # UR5e Neural Kinematics
 
-Neural inverse kinematics for a UR5e arm, trained through a differentiable model of the robot's forward kinematics: 0.185 mm position error on held-out targets and 0.54 ms per solve, running inside a camera-guided pick-and-place loop in Webots.
+Neural inverse kinematics for a UR5e arm, trained through a differentiable model of the robot's forward kinematics: 0.19 mm mean position error on 2,021 held-out test targets and 0.54 ms per solve, running inside a camera-guided pick-and-place loop in Webots.
+
+**Full report:** [`paper/main.pdf`](paper/main.pdf), an 11-page preprint with the multi-seed results, the verification and the references.
 
 [![smoke](https://github.com/clementdumeril/ur5e-neural-kinematics/actions/workflows/smoke.yml/badge.svg)](https://github.com/clementdumeril/ur5e-neural-kinematics/actions/workflows/smoke.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -13,7 +15,7 @@ I built this as a personal project in August and September 2026, on top of an op
 
 The network solves position IK with the tool held pointing down (R³ → R⁶). It takes no orientation as input, so it is not full 6-DoF pose IK.
 
-Key decision: I fixed the IK branch in the data generator instead of learning it, because the multi-head model that learns it is 1.7× less accurate on this task.
+Key decision: I fixed the IK branch in the data generator instead of learning it, because the multi-head model that learns it has about twice the error on this task (0.40 against 0.21 mm on the test set).
 
 Stack: PyTorch, Webots, DH kinematics / geometric Jacobian / damped least squares, homography calibration.
 
@@ -21,11 +23,12 @@ Stack: PyTorch, Webots, DH kinematics / geometric Jacobian / damped least square
 
 | | Value | Source |
 | :-- | --: | :-- |
-| Position / orientation error, 2,002 held-out targets | 0.185 mm / 0.009° | [`train_true_pinn.py`](src/training/train_true_pinn.py) |
+| Position / orientation error of the shipped model, 2,021 held-out test targets | 0.191 mm / 0.009° | [`C_shipped.json`](results/seed_study/C_shipped.json) |
+| Same training, 5 seeds, test set | 0.214 ± 0.039 mm | [`results/seed_study/`](results/seed_study/) |
 | Solve time, median, one thread, tensor conversion included | 0.543 ms | [`benchmark_solveurs.json`](checkpoints/benchmark_solveurs.json) |
 | Against IKPY / against the closed-form solver | 55× faster / 2.3× slower | same |
-| Error reduction from the FK terms of the loss (ablation) | 21% | [`ablation_physics_loss.json`](checkpoints/ablation_physics_loss.json) |
-| Branch-mixed data, no labels: 2-head model vs best single-output net | 0.314 mm vs 3.68 mm / 71.6° | [`multihypothesis_K2.json`](checkpoints/multihypothesis_K2.json), [`ablation_physics_loss.json`](checkpoints/ablation_physics_loss.json) |
+| Effect of the FK terms on single-branch data, 5 paired seeds | 11% lower on average, not significant (95% CI −13% to +34%) | [`results/seed_study/`](results/seed_study/) |
+| Branch-mixed data, no labels: IK branches recovered with 1 → 8 heads | 13% → 78% (4 branches), 14% → 51% (8 branches) | [`results/seed_study/`](results/seed_study/) |
 
 ![IK solve time for six solvers](assets/fig_benchmark.svg)
 
@@ -47,7 +50,7 @@ Code: [`pinn.py`](src/models/pinn.py), class `PINN6DOF`. The MLP in the figure a
 
 ### The loss
 
-Code: [`train_true_pinn.py`](src/training/train_true_pinn.py). The error is computed on the pose the predicted angles reach, as in the figure. The data term keeps the network on one IK branch; the FK terms take the error from 0.238 to 0.187 mm. Adam, 1e-3 decayed to 2e-5, batch 256, 100 epochs.
+Code: [`train_true_pinn.py`](src/training/train_true_pinn.py). The error is computed on the pose the predicted angles reach, as in the figure. The data term keeps the network on one IK branch. On single-branch data the FK terms gave no reliable gain over the data term alone (next section); their use shows on branch-mixed data, where a loss on the reached pose does not average the branches. Adam, 1e-3 decayed to 2e-5, batch 256, 100 epochs.
 
 <details>
 <summary>The loss in full, and why it is built this way</summary>
@@ -61,7 +64,7 @@ $$L = 0.1 \cdot \lVert q - q_{ref} \rVert^2 + \lVert p - p^{*} \rVert^2 + r_{too
 
 ### The dataset generator
 
-Code: [`train_true_pinn.py`](src/training/train_true_pinn.py). 25,000 targets drawn uniformly in x ∈ [0, 0.4], y ∈ [−0.9, −0.5], z ∈ [0.05, 0.45] m, solved by the closed form on one branch (shoulder left, elbow up, wrist up). About 20,000 are reachable, split 90/10.
+Code: [`train_true_pinn.py`](src/training/train_true_pinn.py). 25,000 targets drawn uniformly in x ∈ [0, 0.4], y ∈ [−0.9, −0.5], z ∈ [0.05, 0.45] m, solved by the closed form on one branch (shoulder left, elbow up, wrist up). About 20,000 are reachable, split 90/10. The experiments use a separate 80/10/10 split: epoch chosen on validation, error reported on test.
 
 ### Multi-head IK
 
@@ -71,9 +74,13 @@ Code: [`multihead.py`](src/models/multihead.py), [`multihypothesis_ik.py`](exper
 
 Code: [`jacobian.py`](src/kinematics/jacobian.py), [`ik_dls.py`](src/kinematics/ik_dls.py). Geometric Jacobian and an adaptive Levenberg–Marquardt IK, written as a benchmark baseline.
 
+### A fix to the inherited closed form
+
+Code: the "Theta 2" block of [`inverse_kinematics`](src/control/ur5.py). Round-tripping FK(IK(p)) showed that every elbow-down solution of the inherited solver was finite but about 0.78 m off: θ2 was chosen from the shoulder only, while θ3 followed the elbow. Pairing θ2 with the elbow choice makes all eight branches exact, and the smoke test now checks them.
+
 ### Perception
 
-Code: [`ur5.py`](src/control/ur5.py#L1013) (`vision_calibration`, `pixel_to_robot`, [`detect_cube_color`](src/control/ur5.py#L1154)), [`data_collector.py`](webots/controllers/data_collector/data_collector.py).
+Code: [`ur5.py`](src/control/ur5.py#L1015) (`vision_calibration`, `pixel_to_robot`, [`detect_cube_color`](src/control/ur5.py#L1156)), [`data_collector.py`](webots/controllers/data_collector/data_collector.py).
 
 - Pixel-to-table mapping: the inherited constants came from another scene and were 148 mm off. I wrote a calibration run that places the cube on a grid in the camera's field and fits a homography with RANSAC: 1.1 mm median residual.
 - Camera mount: tilted 17.2°. I identified the optical axis by casting a ray along each local axis of the camera, then corrected the mount to 0.07°.
@@ -81,7 +88,7 @@ Code: [`ur5.py`](src/control/ur5.py#L1013) (`vision_calibration`, `pixel_to_robo
 
 ### Control
 
-Code: [`move_to_config`](src/control/ur5.py#L728) and the neural IK bridge in [`move_to_pose`](src/control/ur5.py#L887). A closed-loop hold on joint position at the end of each move, which removed 114 mm of error that built up in open loop.
+Code: [`move_to_config`](src/control/ur5.py#L730) and the neural IK bridge in [`move_to_pose`](src/control/ur5.py#L889). A closed-loop hold on joint position at the end of each move, which removed 114 mm of error that built up in open loop.
 
 ## How it works
 
@@ -93,26 +100,26 @@ In Webots the network solves every move to the cube and to the tray. The camera 
 
 ### Ablation of the loss
 
-On single-branch data, the FK terms take the error from 0.238 to 0.187 mm (ablation run; the shipped model reaches 0.185 mm).
+Over 5 paired seeds on a held-out test set, the FK terms move the error from 0.241 ± 0.021 to 0.214 ± 0.039 mm. They help in 3 of 5 seeds; the difference is not significant (p = 0.26).
 
 ![Effect of the physics term](assets/fig_ablation.svg)
 
 <details>
-<summary>Protocol, and the branch-mixed case</summary>
+<summary>Protocol, the earlier 21% figure, and the branch-mixed case</summary>
 
-Same seed, data, architecture and schedule; only the loss changes. 0.187 mm is the ablation's own run on its shared dataset; the shipped model, trained separately by `train_true_pinn.py`, reaches 0.185 mm. On branch-mixed data a supervised network collapses to 911 mm, the average of several valid configurations, and even with the FK terms weighted 20× it only reaches 3.68 mm with 71.6° of orientation error. Full 2 × 3 table in [`docs/experiments.md`](docs/experiments.md#1-physics-term-ablation).
+Same data, architecture and schedule; only the loss and the seed change. Epoch chosen on validation, error measured on 2,021 test targets. An earlier version of this README reported a 21% reduction from a single run whose epoch was chosen and reported on the same validation set; it does not hold over seeds. On branch-mixed data a supervised network collapses to 911 mm, the average of several valid configurations, and even with the FK terms weighted 20× it only reaches 3.68 mm with 71.6° of orientation error. That single-run 2 × 3 table is in [`docs/experiments.md`](docs/experiments.md#1-physics-term-ablation); the paper re-runs its single-branch half over seeds (Section 6.2).
 </details>
 
 ### Multi-head sweep
 
-On branch-mixed data, two heads reach 0.314 mm and 0.202° with no branch labels.
+On branch-mixed data, without branch labels, more heads recover more of the solution set but are not more accurate: every run with 2 to 8 heads stays between 0.26 and 0.62 mm.
 
 ![Multi-head sweep over K](assets/fig_multihead.svg)
 
 <details>
-<summary>Coverage, the K = 1 control, and the cost</summary>
+<summary>The single-head case, eight branches, and the cost</summary>
 
-More heads recover more of the solution set (87% at K = 8) but are not more accurate. K = 1 (8.88 mm) has no data term, unlike the 3.68 mm net of the ablation. Against the shipped model, two heads are 1.7× less accurate and about 9× slower (4.9 against 0.54 ms). Per-branch recall in [`docs/experiments.md`](docs/experiments.md#2-multi-head-ik-for-the-multi-valued-problem).
+With one head and the FK loss alone, the network settles on one branch by itself in 2 of 3 seeds (0.33 to 0.44 mm) and stalls between branches in the third (4.4 and 8.8 mm). The 911 mm collapse comes from the supervised term on mixed labels, not from having a single output. The sweep was run on the four elbow-up branches and, after the solver fix, on all eight. Against single-branch training, two heads have about twice the error and are 9× slower (4.9 against 0.54 ms). Tables in Section 6.3 of the paper.
 </details>
 
 ### Error on the simulated robot
@@ -130,6 +137,8 @@ More heads recover more of the solution set (87% at K = 8) but are not more accu
 Timings discard 200 warm-up calls and run on one thread. The Jacobian matches a central-difference derivative of the FK to 3.2 × 10⁻¹⁰.
 
 I removed three claims from earlier versions of this README after measuring them; [`docs/experiments.md`](docs/experiments.md#7-claims-i-withdrew) lists them.
+
+Corrections in October 2026: the 21% gain from the FK terms did not hold over five seeds on a test set (see above), and the statement in `docs/` that only 4 of the 8 IK branches exist with the tool pointing down was wrong; it came from the closed-form bug fixed above.
 
 ## Limitations
 

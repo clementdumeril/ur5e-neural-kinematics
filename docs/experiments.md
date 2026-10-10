@@ -4,6 +4,14 @@ This page holds the full tables behind the README. Every number comes from a
 script in `experiments/` and, where one exists, from its JSON output in
 `checkpoints/`.
 
+> **Superseded in part.** Sections 1 and 2 are the original single-run
+> experiments (seed 42, epoch chosen and reported on the same validation set).
+> The multi-seed re-run on a held-out test set, in
+> [`paper/main.pdf`](../paper/main.pdf) and `results/seed_study/`, replaces them
+> where they differ: the 21% gain of section 1 is not significant over five
+> seeds, and a single head trained on the FK loss alone usually learns one
+> branch (section 2 reported 8.88 mm from a single run; over seeds it is 0.33 to 0.44 mm in two runs out of three).
+
 - [1. Physics-term ablation](#1-physics-term-ablation)
 - [2. Multi-head IK for the multi-valued problem](#2-multi-head-ik-for-the-multi-valued-problem)
 - [3. Continuity and the reach boundary](#3-continuity-and-the-reach-boundary)
@@ -80,10 +88,16 @@ Solve times are the benchmark medians of section 5, which include the tensor con
 
 ### Which branches exist
 
-With the tool fixed pointing down, only 4 of the 8 closed-form branches ever give
-a valid solution on this workspace. `left-up-up` and `right-up-up` are valid on
-every target; `left-down-up` and `right-down-up` on about 35% of them; the
-other four never. Every target has 2 or 4 valid branches.
+This experiment's data set contains 4 of the 8 closed-form branches:
+`left-up-up` and `right-up-up` on every target, `left-down-up` and
+`right-down-up` on about 35% of them. An earlier version of this page said the
+other four never give a valid solution. That was wrong: the inherited
+closed-form solver chose θ2 from the shoulder only, so every elbow-down
+solution came out finite but about 0.78 m off, and the FK check of the
+generator removed it. After the fix in `src/control/ur5.py`, all eight branches
+round-trip exactly (`results/verification/verification.json`). The eight-branch
+version of this experiment is in `paper/main.pdf` (Part D of
+`experiments/seed_study.py`).
 
 Per-branch recall is computed with a periodic angular distance: +179° and −179°
 are 2° apart, not 358°.

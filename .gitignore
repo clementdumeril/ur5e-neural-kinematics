@@ -40,3 +40,14 @@ checkpoints/dataset_branches.npz
 
 # Modele multi-tetes : resultat d experience, non requis a l execution
 checkpoints/multihead_K*.pth
+
+# Caches regenerables des experiences du papier
+results/**/*.npz
+
+# Fichiers intermediaires LaTeX (paper/main.pdf, lui, est versionne)
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.out

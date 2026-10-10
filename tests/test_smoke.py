@@ -135,6 +135,26 @@ except Exception:
     verifie('UR5.vision_calibration()', False,
             f'\n{traceback.format_exc(limit=1)}')
 
+# Regression reelle : la forme fermee heritee choisissait theta2 d'apres
+# l'epaule seule. Toutes les solutions "coude bas" sortaient finies mais fausses
+# (~0,78 m), et le filtre NaN les laissait passer. Aller-retour FK(IK) sur les
+# 8 branches, sur une cible ou elles existent toutes.
+print("\n7. La forme fermee est exacte sur les 8 branches")
+try:
+    import math
+    import numpy as np
+    from ur5 import build_matrix, inverse_kinematics, forward_kinematics
+    cible = np.array([0.30, -0.60, 0.20])
+    T = build_matrix(cible, [math.pi, 0.0, -math.pi / 2], euler='XYZ')
+    for sh in ('left', 'right'):
+        for wr in ('up', 'down'):
+            for el in ('up', 'down'):
+                q = np.asarray(inverse_kinematics(T, shoulder=sh, wrist=wr, elbow=el), float)
+                e = np.linalg.norm(forward_kinematics(q)[0][:3, 3] - cible) * 1000
+                verifie(f'{sh}-{wr}-{el} : {e:.2e} mm', e < 1e-3)
+except Exception:
+    verifie('aller-retour forme fermee', False, f'\n{traceback.format_exc(limit=1)}')
+
 print("\n" + "=" * 70)
 if echecs:
     print(f"ECHEC : {len(echecs)} verification(s) en erreur")
