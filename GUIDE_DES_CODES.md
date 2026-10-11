@@ -473,7 +473,7 @@ c'est le résultat du projet.
 
 ### 9.2 Fichiers ajoutés pour la publication
 
-- **`.gitignore`** — exclut `__pycache__/`, `.venv/`, `.idea/`, `.claude/`, le dépôt
+- **`.gitignore`** — exclut `__pycache__/`, `.venv/`, `.idea/`, le dépôt
   git imbriqué, le dataset d'images et `vgg16.h5` ;
 - **`LICENSE`** — MIT, annoncée dans le README mais jusque-là absente.
 
