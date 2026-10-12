@@ -1,0 +1,44 @@
+# 2026-10-12 15:23:57 webots R2025a --mode=fast --batch capture_pandahand.wbt (UR5_HIDE_IK_TIMES=1)
+[IK] Neural IK model loaded: D:\Work\Pinn_Ur5\checkpoints\pinn_model_true_physics.pth
+[Mode] IK solver: neural IK
+[Gripper] Motors found: panda_finger_joint1 / panda_finger_joint2
+[Gripper] Finger sensors: active
+[Vision] Calibrated reading pose: [-0.1, -0.68, 0.45]
+[Vision] Visible zone (world): x[-1.85,-1.15] y[-0.46,0.26]
+[Gripper] opening -> setpoint 0.040, fingers at 0.0400 / 0.0400 m  (total opening 80 mm)
+[IK] closed-form IK -> [-0.1, -0.68, 0.45]
+[IK] solve time: 0.491 ms
+[Vision] Cube detected by colour: 1307 red pixels, centroid (44.8, 141.6) px
+[Vision] Cube located by the camera (color): (0.198, -0.728)
+Cube: (0.198, -0.728) | Tray: (-0.200, -0.730)
+Starting pick and place...
+[IK] neural IK -> [np.float64(0.19783870871318068), np.float64(-0.7283092908491033), 0.4]
+[IK] solve time: 1.910 ms
+[IK] neural IK -> [np.float64(0.19783870871318068), np.float64(-0.7283092908491033), 0.03]
+[IK] solve time: 0.917 ms
+[Height] command (end of DH chain) : z = +0.0300
+[Height] cube centre                 : z = +0.0250
+[Gripper] closing -> setpoint 0.000, fingers at 0.0352 / 0.0296 m  (total opening 65 mm)
+[Gripper] The fingers hold an object of 50 mm (total travel 65 mm).
+[IK] neural IK -> [np.float64(0.19783870871318068), np.float64(-0.7283092908491033), 0.4]
+[IK] solve time: 1.605 ms
+[Grasp] cube: z +0.0250 -> +0.3942  (+369 mm)
+[Grasp] SUCCESS: the cube followed the arm.
+[IK] neural IK -> [np.float64(-0.1999992556807194), np.float64(-0.7300002039226823), 0.4]
+[IK] solve time: 0.588 ms
+[IK] neural IK -> [np.float64(-0.1999992556807194), np.float64(-0.7300002039226823), 0.05]
+[IK] solve time: 1.065 ms
+[Gripper] opening -> setpoint 0.040, fingers at 0.0401 / 0.0396 m  (total opening 80 mm)
+[IK] neural IK -> [np.float64(-0.1999992556807194), np.float64(-0.7300002039226823), 0.4]
+[IK] solve time: 0.859 ms
+[IK] closed-form IK -> [-0.1, -0.68, 0.45]
+[IK] solve time: 0.377 ms
+
+=== IK SOLVER SUMMARY ===
+  neural IK       :  6 / 8  (75 %)
+  closed-form IK  :  2 / 8  (25 %)
+  -> the closed-form moves are the camera reading pose,
+     kept off the network on purpose (see the controller).
+
+=== NEURAL IK ERROR MEASURED IN WEBOTS ===
+# webots exit 0 at 15:25:06

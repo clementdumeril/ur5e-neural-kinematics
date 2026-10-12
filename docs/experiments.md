@@ -253,14 +253,19 @@ and the `frame6` node that Webots reports. What remains includes the DH model,
 the motor servo loop and the physics. The campaign also repeats the same target
 with the same solver to measure the arm's own repeatability.
 
-| Point | Error |
-| :-- | ---: |
-| Grasp point | 0.30 mm |
-| Above the drop tray ($x = -0.20$, outside the training box) | 7 to 11 mm |
+Shipped model, Webots R2025a, October 2026
+([`results/webots/closed_loop_console.txt`](../results/webots/closed_loop_console.txt)):
 
-These figures were measured before the orientation term was added to the loss.
-The current model is better on validation and has not been re-measured in
-Webots yet.
+| Point | Error | Repeatability |
+| :-- | ---: | ---: |
+| Above the cube | 0.45 mm | 0.00 mm |
+| Grasp point | 0.33 mm | 0.04 mm |
+| Above the drop tray ($x = -0.20$, outside the training box) | 10.92 mm | 0.00 mm |
+| Drop height over the tray | 7.34 mm | 0.00 mm |
+
+One target per point. An earlier model, trained before the orientation term was
+added to the loss, gave 0.30 mm at the grasp point and 7 to 11 mm above the
+tray.
 
 The campaign runs after the scenario. When it ran first, it nudged the cube and
 the scenario then used stale coordinates, which looked exactly like the network

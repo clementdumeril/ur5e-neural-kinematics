@@ -1,0 +1,78 @@
+# 2026-10-12 15:18:12 webots R2025a --mode=fast --batch --minimize my_first_simulation_pandahand.wbt
+[IK] Neural IK model loaded: D:\Work\Pinn_Ur5\checkpoints\pinn_model_true_physics.pth
+[Mode] IK solver: neural IK
+[Gripper] Motors found: panda_finger_joint1 / panda_finger_joint2
+[Gripper] Finger sensors: active
+[Vision] Calibrated reading pose: [-0.1, -0.68, 0.45]
+[Vision] Visible zone (world): x[-1.85,-1.15] y[-0.46,0.26]
+[Gripper] opening -> setpoint 0.040, fingers at 0.0400 / 0.0400 m  (total opening 80 mm)
+[IK] closed-form IK -> [-0.1, -0.68, 0.45]
+[IK] solve time: 0.537 ms
+[Vision] Cube detected by colour: 1307 red pixels, centroid (44.8, 141.6) px
+[Vision] Cube located by the camera (color): (0.198, -0.728)
+Cube: (0.198, -0.728) | Tray: (-0.200, -0.730)
+Starting pick and place...
+[IK] neural IK -> [np.float64(0.19783870871318068), np.float64(-0.7283092908491033), 0.4]
+[IK] solve time: 1.353 ms
+[IK] neural IK -> [np.float64(0.19783870871318068), np.float64(-0.7283092908491033), 0.03]
+[IK] solve time: 0.877 ms
+[Height] command (end of DH chain) : z = +0.0300
+[Height] cube centre                 : z = +0.0250
+[Gripper] closing -> setpoint 0.000, fingers at 0.0352 / 0.0296 m  (total opening 65 mm)
+[Gripper] The fingers hold an object of 50 mm (total travel 65 mm).
+[IK] neural IK -> [np.float64(0.19783870871318068), np.float64(-0.7283092908491033), 0.4]
+[IK] solve time: 0.676 ms
+[Grasp] cube: z +0.0250 -> +0.3942  (+369 mm)
+[Grasp] SUCCESS: the cube followed the arm.
+[IK] neural IK -> [np.float64(-0.1999992556807194), np.float64(-0.7300002039226823), 0.4]
+[IK] solve time: 1.045 ms
+[IK] neural IK -> [np.float64(-0.1999992556807194), np.float64(-0.7300002039226823), 0.05]
+[IK] solve time: 5.379 ms
+[Gripper] opening -> setpoint 0.040, fingers at 0.0401 / 0.0396 m  (total opening 80 mm)
+[IK] neural IK -> [np.float64(-0.1999992556807194), np.float64(-0.7300002039226823), 0.4]
+[IK] solve time: 0.620 ms
+[IK] closed-form IK -> [-0.1, -0.68, 0.45]
+[IK] solve time: 0.488 ms
+
+=== IK SOLVER SUMMARY ===
+  neural IK       :  6 / 8  (75 %)
+  closed-form IK  :  2 / 8  (25 %)
+  -> the closed-form moves are the camera reading pose,
+     kept off the network on purpose (see the controller).
+
+=== NEURAL IK ERROR MEASURED IN WEBOTS ===
+[IK] closed-form IK -> [np.float64(0.19783870871318068), np.float64(-0.7283092908491033), 0.4]
+[IK] solve time: 0.435 ms
+[IK] closed-form IK -> [np.float64(0.19783870871318068), np.float64(-0.7283092908491033), 0.4]
+[IK] solve time: 0.423 ms
+[IK] neural IK -> [np.float64(0.19783870871318068), np.float64(-0.7283092908491033), 0.4]
+[IK] solve time: 0.834 ms
+  cube approach      (np.float64(0.198), np.float64(-0.728), 0.4) error   0.45 mm   (repeatability 0.00 mm)
+[IK] closed-form IK -> [np.float64(0.19783870871318068), np.float64(-0.7283092908491033), 0.03]
+[IK] solve time: 0.331 ms
+[IK] closed-form IK -> [np.float64(0.19783870871318068), np.float64(-0.7283092908491033), 0.03]
+[IK] solve time: 0.408 ms
+[IK] neural IK -> [np.float64(0.19783870871318068), np.float64(-0.7283092908491033), 0.03]
+[IK] solve time: 0.679 ms
+  cube grasp         (np.float64(0.198), np.float64(-0.728), 0.03) error   0.33 mm   (repeatability 0.04 mm)
+[IK] closed-form IK -> [np.float64(-0.1999992556807194), np.float64(-0.7300002039226823), 0.4]
+[IK] solve time: 0.406 ms
+[IK] closed-form IK -> [np.float64(-0.1999992556807194), np.float64(-0.7300002039226823), 0.4]
+[IK] solve time: 0.731 ms
+[IK] neural IK -> [np.float64(-0.1999992556807194), np.float64(-0.7300002039226823), 0.4]
+[IK] solve time: 0.673 ms
+  tray approach      (np.float64(-0.2), np.float64(-0.73), 0.4) error  10.92 mm   (repeatability 0.00 mm)
+[IK] closed-form IK -> [np.float64(-0.1999992556807194), np.float64(-0.7300002039226823), 0.05]
+[IK] solve time: 0.339 ms
+[IK] closed-form IK -> [np.float64(-0.1999992556807194), np.float64(-0.7300002039226823), 0.05]
+[IK] solve time: 0.541 ms
+[IK] neural IK -> [np.float64(-0.1999992556807194), np.float64(-0.7300002039226823), 0.05]
+[IK] solve time: 0.725 ms
+  tray drop          (np.float64(-0.2), np.float64(-0.73), 0.05) error   7.34 mm   (repeatability 0.00 mm)
+
+  neural IK error : mean 4.76 mm, max 10.92 mm
+  repeatability   : mean 0.01 mm
+  -> repeatability is the floor: an error of the same order
+     cannot be attributed to the network.
+Done.
+# webots exit 0 at 15:21:18

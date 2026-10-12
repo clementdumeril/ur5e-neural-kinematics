@@ -10,7 +10,6 @@ Writes  paper/figures/*.pdf (vector) and copies the Webots screenshot.
 import glob
 import json
 import os
-import shutil
 import sys
 
 import numpy as np
@@ -173,7 +172,7 @@ def fig_workspace():
 
 if __name__ == '__main__':
     os.makedirs(FIG, exist_ok=True)
-    shutil.copy(os.path.join(ROOT, 'assets', 'webots_scene.png'), os.path.join(FIG, 'webots_scene.png'))
+    # figures/webots_sequence.png is written by experiments/make_demo_gif.py
     fig_ablation()
     fig_multihead()
     fig_benchmark()

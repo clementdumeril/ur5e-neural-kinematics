@@ -7,9 +7,9 @@ Neural inverse kinematics for a UR5e arm, trained through a differentiable model
 [![smoke](https://github.com/clementdumeril/ur5e-neural-kinematics/actions/workflows/smoke.yml/badge.svg)](https://github.com/clementdumeril/ur5e-neural-kinematics/actions/workflows/smoke.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-![Two UR5e arms running the same pick-and-place task in Webots](assets/webots_scene.png)
+![UR5e in Webots: the camera finds the cube, the network solves each move, the arm grasps the cube and drops it in the tray](assets/demo.gif)
 
-*The comparison scene [`pinn_vs_math.wbt`](webots/worlds/pinn_vs_math.wbt): one arm solves its IK with the network (red cube), the other with the closed-form solver (green cube).*
+*One run of [`my_first_simulation_pandahand.wbt`](webots/worlds/my_first_simulation_pandahand.wbt), sped up 2×: the camera locates the cube, the network solves every move to the cube and the tray, and the arm drops the cube in the tray. Recorded with [`capture_recorder.py`](webots/controllers/capture_recorder/capture_recorder.py).*
 
 I built this as a personal project in August and September 2026, on top of an open-source Webots pick-and-place scene. The arm finds a red cube with its camera, turns the cube position into six joint angles, grasps the cube and drops it in a tray. I wanted to know whether a small network could do the IK step inside that loop, and what training it through the robot's kinematics buys over plain regression on joint angles.
 
@@ -94,7 +94,7 @@ Code: [`move_to_config`](src/control/ur5.py#L730) and the neural IK bridge in [`
 
 ![Deployment pipeline in Webots](assets/workflow.svg)
 
-In Webots the network solves every move to the cube and to the tray. The camera reading pose (x = −0.10 m) is outside the training box, where the network would be 3.2 mm off and shift the camera, so that one move stays on the closed form. The tray (x = −0.20 m) is outside the box too; the previous model was 7–11 mm off there, which the drop tolerates.
+In Webots the network solves every move to the cube and to the tray. The camera reading pose (x = −0.10 m) is outside the training box, where the network would be 3.2 mm off and shift the camera, so that one move stays on the closed form. The tray (x = −0.20 m) is outside the box too; the network is 7 to 11 mm off there, which the drop tolerates.
 
 ## How I checked it
 
@@ -124,12 +124,12 @@ With one head and the FK loss alone, the network settles on one branch by itself
 
 ### Error on the simulated robot
 
-0.30 mm at the grasp point, on the previous model; the current model has not been re-measured in Webots yet.
+0.33 mm at the grasp point and 0.45 mm above the cube, against 0.01 mm for the arm's own repeatability; 7 to 11 mm above the tray, outside the training box. Measured on the shipped model in October 2026, in the same run where the camera located the cube and the grasp succeeded ([`closed_loop_console.txt`](results/webots/closed_loop_console.txt)).
 
 <details>
 <summary>How it is measured</summary>
 
-`mesurer_erreur_pinn()` sends the arm to the same target with the closed form and with the network and compares the poses reached in the physics engine, not the network's own FK. The measurement predates the orientation term in the loss.
+`mesurer_erreur_pinn()` sends the arm to the same target with the closed form and with the network and compares the poses reached in the physics engine, not the network's own FK. One target per point, so these are single measurements. An earlier model, trained without the orientation term, gave 0.30 mm at the grasp point.
 </details>
 
 ### Timing and the Jacobian

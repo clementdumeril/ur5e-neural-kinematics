@@ -924,8 +924,8 @@ class UR5:
         end_time_ik = time.perf_counter()
         calc_time_ms = (end_time_ik - start_time_ik) * 1000.0
         
-        # Astuce pour transmettre le temps au HUD Webots via le Superviseur
-        if hasattr(self, 'supervisor') and hasattr(self.supervisor, 'setLabel'):
+        # Solve time on the Webots HUD (UR5_HIDE_IK_TIMES=1 hides it, e.g. for movies)
+        if hasattr(self, 'supervisor') and hasattr(self.supervisor, 'setLabel') and not os.environ.get('UR5_HIDE_IK_TIMES'):
             if self.use_pinn:
                 self.supervisor.setLabel(3, f"Neural IK: {calc_time_ms:.3f} ms", 0.02, 0.12, 0.1, 0xffffff, 0, "Arial")
             else:

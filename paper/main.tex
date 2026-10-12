@@ -512,23 +512,27 @@ the network has no continuity advantage here.
 \subsection{Closed-loop simulation}
 In Webots (Figure~\ref{fig:webots}) the arm locates the cube with its camera
 and the network solves every move to the cube and to the tray; only the camera
-reading pose, outside the training box, uses the closed form. A campaign that
-drives the arm to the same target with both solvers and compares the poses
-reached in the physics engine measured $0.30\mm$ at the grasp point and 7 to
-11\,mm above the tray. The tray, at $x=-0.20$\,m, lies outside the training
-box, yet the network drives the arm there. These figures were obtained with an
-earlier checkpoint trained without the orientation term and have not been
-repeated with the deployed one. A homography fitted on a calibration grid maps
-pixels to the table with a 1.1\,mm median residual. A colour-threshold detector
-located the cube within 8\,mm, against 49\,mm for a VGG16 regressor, which was
-dropped; since a file-path error that silently disabled the camera was fixed,
-the camera loop has not been re-run in simulation.
+reading pose, outside the training box, uses the closed form. After the
+scenario, a campaign drives the arm to each scenario target with the closed
+form, again with the closed form (repeatability), and with the network, and
+compares the poses reached in the physics engine. With the deployed checkpoint
+(Webots R2025a, \repo{results/webots/closed_loop_console.txt}) the network is
+$0.45\mm$ off above the cube and $0.33\mm$ at the grasp point, against a
+repeatability of at most 0.04\,mm, and 10.9 and 7.3\,mm above the tray. The
+tray, at $x=-0.20$\,m, lies outside the training box, yet the network drives
+the arm there; the drop tolerates the error. Each value is a single target. In
+the same run the camera located the cube, the grasp lifted it by 369\,mm and
+the cube reached the tray. A homography fitted on a calibration grid maps
+pixels to the table with a 1.1\,mm median residual, and a colour-threshold
+detector located the cube within 8\,mm, against 49\,mm for a VGG16 regressor,
+which was dropped.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=0.62\linewidth]{figures/webots_scene.png}
-\caption{Webots comparison scene: one arm driven by the network (red cube), one
-by the closed form (green cube).}
+\includegraphics[width=\linewidth]{figures/webots_sequence.png}
+\caption{One closed-loop run in Webots with the deployed network: reading pose
+(the camera locates the cube), grasp, transport, cube on the tray. Frames of the
+movie recorded by \repo{webots/controllers/capture_recorder}.}
 \label{fig:webots}
 \end{figure}
 
@@ -556,9 +560,6 @@ heads trained without labels cover a growing share of the solution set.
   magnitude and the network gives no signal. A reachability and domain check
   must sit in front of it; the present pick-and-place loop does not have one
   and sends the network to the tray, outside its training box.
-\item \emph{Closed-loop accuracy of the deployed model.} The only closed-loop
-  measurement predates the deployed checkpoint, and the camera loop has not
-  been re-run since the path fix.
 \item \emph{Multi-head trade-off.} On this task, fixing the branch in the data
   generator is simpler and more accurate than learning it; the multi-head
   model becomes useful when the branch cannot be chosen in advance, for
@@ -568,7 +569,7 @@ heads trained without labels cover a growing share of the solution set.
   reaches the target; joint limits and collisions with the table are not
   checked, so some elbow-down solutions may not be executable.
 \item \emph{Scope of measurement.} Results come from kinematic evaluation and
-  one simulator; the closed-loop figures predate the deployed checkpoint, and
+  one simulator; the closed-loop figures are single targets from one run, and
   the workspace map is a single horizontal slice.
 \item \emph{Naming.} The loss contains no dynamics or differential operator;
   ``physics-informed'' here means kinematics-informed.
@@ -585,8 +586,8 @@ average in four of six runs, and a relaxed winner-take-all multi-head network
 covered more of the solution set, at no gain in accuracy. The network remains
 slower than the closed form and unsafe outside its domain. Natural next steps are an orientation input for pose IK, an
 explicit reachability or confidence output, joint-limit and collision checks
-on the recovered branches, and repeating the closed-loop measurement with the
-deployed checkpoint.
+on the recovered branches, and a closed-loop evaluation over many targets
+rather than the four of the scenario.
 
 %=============================================================================
 \section*{Reproducibility statement}

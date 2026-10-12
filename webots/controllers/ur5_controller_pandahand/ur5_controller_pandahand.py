@@ -11,6 +11,26 @@ for _d in ('src/kinematics', 'src/models', 'src/control', 'src/training'):
         sys.path.insert(0, _p)
 REPO_DIR = _ROOT
 
+# Batch runs (webots --batch): the Windows launcher does not forward the
+# controller console, so UR5_LOG=<file> copies everything printed to a file.
+if os.environ.get('UR5_LOG'):
+    class _Tee:
+        def __init__(self, *streams):
+            self.streams = streams
+
+        def write(self, s):
+            for st in self.streams:
+                st.write(s)
+                st.flush()
+
+        def flush(self):
+            for st in self.streams:
+                st.flush()
+
+    _log = open(os.environ['UR5_LOG'], 'a', encoding='utf-8')
+    sys.stdout = _Tee(sys.stdout, _log)
+    sys.stderr = _Tee(sys.stderr, _log)
+
 from ur5 import UR5
 
 PI = pi
@@ -528,4 +548,10 @@ if MESURER_ERREUR_PINN and ur5.pinn_model is not None:
     ])
 
 print("Done.")
+# Batch runs: UR5_QUIT_WHEN_DONE=1 closes Webots once the scenario and the
+# measurement campaign are over.
+if os.environ.get('UR5_QUIT_WHEN_DONE'):
+    ur5.supervisor.simulationQuit(0)
+    while ur5.supervisor.step(ur5.timestep) != -1:
+        pass
 
