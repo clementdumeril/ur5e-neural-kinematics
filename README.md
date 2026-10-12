@@ -124,7 +124,7 @@ With one head and the FK loss alone, the network settles on one branch by itself
 
 ### Error on the simulated robot
 
-0.33 mm at the grasp point and 0.45 mm above the cube, against 0.01 mm for the arm's own repeatability; 7 to 11 mm above the tray, outside the training box. Measured on the shipped model in October 2026, in the same run where the camera located the cube and the grasp succeeded ([`closed_loop_console.txt`](results/webots/closed_loop_console.txt)).
+0.33 mm at the grasp point and 0.45 mm above the cube, against at most 0.04 mm for the arm's own repeatability; 7 to 11 mm above the tray, outside the training box. Measured on the shipped model in October 2026, in the same run where the camera located the cube and the grasp succeeded ([`closed_loop_console.txt`](results/webots/closed_loop_console.txt)).
 
 <details>
 <summary>How it is measured</summary>
