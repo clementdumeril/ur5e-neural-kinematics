@@ -1,171 +1,45 @@
-# Experiments in detail
+# Experiments
 
-These are the full tables behind the README. Every number comes from a
-script in `experiments/` and, where one exists, from its JSON output in
-`checkpoints/`.
+The tables behind the README. Each number comes from a script in `experiments/` and its JSON output in `checkpoints/` or `results/`. The multi-seed runs and the full protocol are in [`paper/main.pdf`](../paper/main.pdf).
 
-Sections 1 and 2 are partly out of date. They are the original single-run
-experiments (seed 42, epoch chosen and reported on the same validation set).
-Where they differ, the multi-seed re-run on a held-out test set in
-[`paper/main.pdf`](../paper/main.pdf) and `results/seed_study/` replaces them:
-the 21% gain of section 1 is not significant over five seeds, and a single head
-trained on the FK loss alone usually learns one branch (section 2 reported
-8.88 mm from a single run; over seeds it is 0.33 to 0.44 mm in two runs out of
-three).
-
-- [1. Physics-term ablation](#1-physics-term-ablation)
-- [2. Multi-head IK for the multi-valued problem](#2-multi-head-ik-for-the-multi-valued-problem)
+- [1. Loss ablation](#1-loss-ablation)
+- [2. Multi-head IK](#2-multi-head-ik)
 - [3. Continuity and the reach boundary](#3-continuity-and-the-reach-boundary)
-- [4. Geometric Jacobian and damped least squares](#4-geometric-jacobian-and-damped-least-squares)
+- [4. Jacobian and damped least squares](#4-jacobian-and-damped-least-squares)
 - [5. Solver benchmark](#5-solver-benchmark)
 - [6. Measuring on the simulated robot](#6-measuring-on-the-simulated-robot)
-- [7. Claims I withdrew](#7-claims-i-withdrew)
 
----
+## 1. Loss ablation
 
-## 1. Physics-term ablation
+Script: [`experiments/ablation_physics_loss.py`](../experiments/ablation_physics_loss.py), seed study in `results/seed_study/`.
 
-Script: [`experiments/ablation_physics_loss.py`](../experiments/ablation_physics_loss.py).
-Results: [`checkpoints/ablation_physics_loss.json`](../checkpoints/ablation_physics_loss.json).
+On single-branch data, over 5 paired seeds on a held-out test set, the FK terms move the error from 0.241 ± 0.021 to 0.214 ± 0.039 mm. They help in 3 of 5 seeds and the difference is not significant (p = 0.26).
 
-A 2 × 3 design. Everything is held constant (seed 42, the same 20,201 targets,
-architecture, 100 epochs, learning-rate schedule, best-epoch selection) except
-two variables: whether the training data keeps one IK branch or mixes all of
-them, and the weight $w_p$ of the physics term.
+On branch-mixed data (single run), the supervised network collapses to 911 mm, the mean of several valid configurations. With the FK terms weighted 20× it reaches 3.68 mm with 71.6° of orientation error, still unusable for a grasp.
 
-| Training data | $w_p = 0$ (supervised) | $w_p = 1$ (shipped) | $w_p = 20$ |
-| :-- | ---: | ---: | ---: |
-| One IK branch | 0.238 mm / 0.012° | 0.187 mm / 0.011° | 0.180 mm / 0.044° |
-| Branches mixed | 911 mm / 99.0° | 69.6 mm / 98.6° | 3.68 mm / 71.6° |
+## 2. Multi-head IK
 
-On single-branch data, which is what the shipped model uses, the physics term
-lowered the position error by 21% in this single run (0.238 to 0.187 mm); it
-does not hold over five seeds (see the note at the top). Raising $w_p$ to 20
-gains another 0.007 mm of position but makes orientation 4× worse, so I kept
-$w_p = 1$.
+Model: [`src/models/multihead.py`](../src/models/multihead.py). Script: [`experiments/multihypothesis_ik.py`](../experiments/multihypothesis_ik.py).
 
-On mixed-branch data, the supervised network collapses to 911 mm: it learns the
-mean of several valid joint configurations, which is not itself a solution. The
-physics term alone does not fix that. At $w_p = 1$ the model never improves
-after its first epoch; at $w_p = 20$ it reaches 3.68 mm with 71.6° of
-orientation error, still unusable for a grasp.
+A shared trunk with K heads, trained on branch-mixed data with a relaxed winner-take-all loss and no branch labels. At inference the FK scores the K proposals and the closest one wins.
 
----
+Over seeds on a test set (paper, Section 6.3):
 
-## 2. Multi-head IK for the multi-valued problem
+- going from 1 to 8 heads, the share of branches recovered goes from 13% to 78% on the 4 elbow-up branches, and from 14% to 51% on all 8;
+- every run with 2 to 8 heads stays between 0.26 and 0.62 mm;
+- with one head and the FK loss alone, the network settles on one branch in 2 of 3 seeds (0.33 to 0.44 mm) and stalls between branches in the third.
 
-Model: [`src/models/multihead.py`](../src/models/multihead.py).
-Script: [`experiments/multihypothesis_ik.py`](../experiments/multihypothesis_ik.py).
-Results: `checkpoints/multihypothesis_K{1,2,4,8}.json`.
-
-A network is a function: one output per input. When several joint
-configurations reach the same target, a single output can only average them.
-The multi-head model gives the network K outputs from a shared trunk:
-
-```
-                      +-- head 1 --> q(1)
-(x,y,z) --> trunk ----+-- head 2 --> q(2)
-                      +-- ...
-                      +-- head K --> q(K)
-```
-
-$$L = \min_k L_{phys}\left( q^{(k)} \right)$$
-
-The minimum is relaxed: the winning head gets weight $1 - \varepsilon$ and the
-others share $\varepsilon$. With a strict minimum, the first head to win takes
-all the gradient and the others never train. No branch labels are used anywhere
-in training. At inference, the forward kinematics runs on all K outputs and the
-closest pose wins, using the same position-plus-orientation weighting as the
-loss; the reported latency includes that selection.
-
-### Result at K = 2
-
-| Training | Position | Orientation | Solve time (benchmark) | Branch chosen by hand |
-| :-- | ---: | ---: | ---: | :-: |
-| Single head, one branch | 0.187 mm | 0.011° | 0.531 ms | yes |
-| Single head, mixed branches ($w_p = 20$) | 3.684 mm | 71.6° | 0.531 ms | no |
-| 2 heads, mixed branches | 0.314 mm | 0.202° | 4.029 ms | no |
-
-Solve times are the benchmark medians of section 5, which include the tensor conversion and, for two heads, the FK and the selection.
-
-### Which branches exist
-
-This experiment's data set contains 4 of the 8 closed-form branches:
-`left-up-up` and `right-up-up` on every target, `left-down-up` and
-`right-down-up` on about 35% of them. An earlier version of this page said the
-other four never give a valid solution. That was wrong: the inherited
-closed-form solver chose θ2 from the shoulder only, so every elbow-down
-solution came out finite but about 0.78 m off, and the FK check of the
-generator removed it. After the fix in `src/control/ur5.py`, all eight branches
-round-trip exactly (`results/verification/verification.json`). The eight-branch
-version of this experiment is in `paper/main.pdf` (Part D of
-`experiments/seed_study.py`).
-
-Per-branch recall is computed with a periodic angular distance: +179° and −179°
-are 2° apart, not 358°.
-
-### Sweep over K
-
-Same cached dataset (fingerprint `b9e74b3f`), same seed, 100 epochs. Latency here is timed inside the training script on a tensor input, without the conversion the benchmark includes: compare it across K only.
-
-| K | Parameters | Position | Orientation | Branch recall | Latency |
-| --: | --: | --: | --: | --: | --: |
-| 1 | 660 k | 8.881 mm | 17.87° | 11.8% | 4.34 ms |
-| 2 | 793 k | 0.314 mm | 0.202° | 36.7% | 4.61 ms |
-| 4 | 1.06 M | 0.357 mm | 0.322° | 82.2% | 5.23 ms |
-| 8 | 1.59 M | 0.439 mm | 0.278° | 86.8% | 5.67 ms |
-
-In this single run K = 2 gave the most accurate answer; over three seeds on a test set (paper, Section 6.3) K = 4 and K = 8 are as accurate, so that ranking does not hold. Recall keeps rising with K because
-best-of-K needs only one correct head, while recovering the whole solution set
-needs more. At K = 2 one head reproduces `right-up-up` 99% of the time and the
-other does not land on a second branch. At K = 8, three of the four branches are
-recovered above 88%.
-
-K = 1 is the control: same code, same loss, one head, 8.881 mm. It has no data
-term, unlike the mixed-branch runs of the ablation, so the two are not directly
-comparable.
-
-Latency: each extra head costs about 0.19 ms. Most of the 4 to 6 ms is running
-the forward kinematics and the selection at all, which the single-output
-network does not need.
-
-### Caveats
-
-- Against the shipped single-branch model, K = 2 is 1.7× worse in position, about
-  20× worse in orientation and about 8× slower (4.0 ms against 0.53 ms). For one tool orientation and
-  top-down grasps, fixing the branch in the data generator is the better
-  engineering choice, and that is what the repository ships.
-- Branch coverage is not stable across runs. At K = 4, `right-down-up` is
-  recovered 0% of the time and `left-down-up` 81%; at K = 8 it is 88% and
-  27%.
-- Validation error oscillates during training because the winner assignment
-  keeps changing. The saved checkpoint is the best epoch, not the last.
-
-This approach becomes useful when the branch cannot be fixed in advance: several
-tool orientations, obstacle avoidance that needs an elbow-down route, or full
-SE(3) pose IK.
-
----
+Two heads have about twice the error of single-branch training and are 8× slower (4.0 against 0.53 ms). For one tool orientation, fixing the branch in the data generator is the better choice, and that is what I ship. Multiple heads become useful when the branch can't be fixed in advance.
 
 ## 3. Continuity and the reach boundary
 
 Script: [`experiments/mesure_continuite.py`](../experiments/mesure_continuite.py).
 
-A 400-sample circle through the workspace, recording the joint-space jump
-between consecutive poses:
+On a 400-sample circle through the workspace, the network and the closed form have the same joint-space jumps (median 0.0084 rad) and no branch change.
 
-| Solver | Median jump | p95 | Max |
-| :-- | ---: | ---: | ---: |
-| Closed form, fixed branch | 0.0084 rad | 0.0108 | 0.0109 |
-| Closed form, first valid branch | 0.0084 rad | 0.0108 | 0.0109 |
-| Network | 0.0084 rad | 0.0108 | 0.0109 |
+Walking along x past the reach limit:
 
-Identical, with no branch change in 399 steps: with the tool pointing down, the
-preferred branch is valid wherever the target is reachable.
-
-Walking along $x$ past the reach limit:
-
-| $x$ (m) | Closed form | Network, error of the returned pose |
+| x (m) | Closed form | Network, error of the returned pose |
 | ---: | :-- | ---: |
 | +0.40 | solution | 0.2 mm |
 | +0.50 | solution | 2.0 mm |
@@ -173,131 +47,42 @@ Walking along $x$ past the reach limit:
 | +0.60 | exception | 389 mm |
 | +0.70 | exception | 1,460 mm |
 
-The closed-form solver raises an exception. The network returns six angles with
-no sign that anything is wrong. Any deployment needs an explicit reachability
-check in front of it.
+The network gives no sign that anything is wrong, so it needs a reachability check in front of it.
 
----
+## 4. Jacobian and damped least squares
 
-## 4. Geometric Jacobian and damped least squares
+Code: [`src/kinematics/jacobian.py`](../src/kinematics/jacobian.py), [`src/kinematics/ik_dls.py`](../src/kinematics/ik_dls.py).
 
-Code: [`src/kinematics/jacobian.py`](../src/kinematics/jacobian.py),
-[`src/kinematics/ik_dls.py`](../src/kinematics/ik_dls.py).
-
-The 6×6 geometric Jacobian is built column by column:
-
-$$J_{v,i} = z_{i-1} \times (p_e - p_{i-1}), \qquad J_{\omega,i} = z_{i-1}$$
-
-It is checked against a central-difference derivative of the forward kinematics
-over 200 random configurations: maximum deviation 3.2 × 10⁻¹⁰, mean
-1.5 × 10⁻¹⁰.
-
-| Configuration | Manipulability $\sqrt{\det(JJ^T)}$ | Condition number |
-| :-- | ---: | ---: |
-| Rest pose | 0.0287 | 16.5 |
-| Arm fully extended ($q = 0$) | 0.0000 | ∞ |
-
-The damped least-squares solver uses
-
-$$\Delta q = J^T\left(JJ^T + \lambda^2 I\right)^{-1} e$$
-
-with $e$ the 6-vector pose error, its rotation part taken as the logarithm on
-SO(3). The damping is adaptive: zero when the arm is well conditioned, growing
-as the smallest singular value of $J$ approaches a threshold.
-
-From a single fixed start it either converges in about 23 iterations to
-sub-micron accuracy or stalls in a local minimum tens of millimeters away. It
-fails on 59.5% of workspace targets. Eight random restarts bring that to 0%
-at roughly twice the cost.
-
----
+The geometric Jacobian matches a central-difference derivative of the FK to 3.2 × 10⁻¹⁰ over 200 random configurations. The damped least-squares solver uses adaptive damping. From one fixed start it fails on 59.5% of targets; eight random restarts bring that to 0% at about twice the cost.
 
 ## 5. Solver benchmark
 
-Script: [`experiments/benchmark_solveurs.py`](../experiments/benchmark_solveurs.py).
-Results: [`results/benchmark/benchmark.json`](../results/benchmark/benchmark.json).
+Script: [`experiments/benchmark_solveurs.py`](../experiments/benchmark_solveurs.py). Results: [`results/benchmark/benchmark.json`](../results/benchmark/benchmark.json).
 
-The same 200 targets for every solver, position and tool orientation both
-imposed. 200 warm-up calls on a different set of targets are discarded;
-`torch.set_num_threads(1)`. Times are measured at the call site and include the
-NumPy-to-tensor conversion a caller has to pay. A solution further than 1 mm
-or 0.1° from the requested pose counts as a failure.
+Same 200 pose targets for every solver, 200 warm-up calls on other targets, one thread, tensor conversion included. A solution more than 1 mm or 0.1° off counts as a failure.
 
-| Solver | Median | Mean | p95 | Error | Failures | Differentiable |
-| :-- | ---: | ---: | ---: | ---: | ---: | :-: |
-| Closed form | 0.232 ms | 0.294 | 0.607 | exact | 0% | no |
-| Network, single output | 0.531 ms | 0.613 | 1.296 | 0.165 mm | 0% | yes |
-| Network, 2 heads + selection | 4.029 ms | 4.484 | 7.159 | 0.261 mm | 0% | yes |
-| IKPy, full pose | 38.1 ms | 39.5 | 61.9 | exact | 58.0% | no |
-| Damped least squares, one start | 136.0 ms | 118.9 | 260.4 | exact | 59.5% | no |
-| Damped least squares, 8 restarts | 270.0 ms | 204.2 | 457.4 | exact | 0% | no |
+| Solver | Median | p95 | Error | Failures |
+| :-- | ---: | ---: | ---: | ---: |
+| Closed form | 0.232 ms | 0.607 | exact | 0% |
+| Network, single output | 0.531 ms | 1.296 | 0.165 mm | 0% |
+| Network, 2 heads + selection | 4.029 ms | 7.159 | 0.261 mm | 0% |
+| IKPy, full pose | 38.1 ms | 61.9 | exact | 58.0% |
+| Damped least squares, one start | 136.0 ms | 260.4 | exact | 59.5% |
+| Damped least squares, 8 restarts | 270.0 ms | 457.4 | exact | 0% |
 
-IKPy runs on a chain built from this project's DH table
-(`ikpy_chain_from_dh` in `src/kinematics/ikpy_ur5e_solver.py`, FK identical to
-1e-15) and starts from the same rest configuration as damped least squares.
-Both local methods fail on about 60% of targets from that start.
-
-The network is 2.3× slower than the closed form and about 72× faster than IKPy.
-
-An earlier version of this table gave IKPy the position only, on targets from a
-different URDF, and reported 55×. It compared two different problems.
-
----
+IKPy runs on a chain built from this project's DH table and starts from the same rest configuration as damped least squares. The network is 2.3× slower than the closed form and about 72× faster than IKPy.
 
 ## 6. Measuring on the simulated robot
 
-`mesurer_erreur_pinn()` in
-[`ur5_controller_pandahand.py`](../webots/controllers/ur5_controller_pandahand/ur5_controller_pandahand.py)
-drives the arm to the same target twice, once with the closed-form solver and
-once with the network, and compares the poses actually reached in the physics
-engine. The comparison cancels a constant 108 mm offset between the DH tool frame
-and the `frame6` node that Webots reports. What remains includes the DH model,
-the motor servo loop and the physics. The campaign also repeats the same target
-with the same solver to measure the arm's own repeatability.
+`mesurer_erreur_pinn()` in [`ur5_controller_pandahand.py`](../webots/controllers/ur5_controller_pandahand/ur5_controller_pandahand.py) sends the arm to the same target once with the closed form and once with the network, and compares the poses reached in the physics engine. Repeating a target with the same solver gives the arm's repeatability.
 
-Shipped model, Webots R2025a, October 2026
-([`results/webots/closed_loop_console.txt`](../results/webots/closed_loop_console.txt)):
+Shipped model, Webots R2025a, October 2026 ([`closed_loop_console.txt`](../results/webots/closed_loop_console.txt)), one target per point:
 
 | Point | Error | Repeatability |
 | :-- | ---: | ---: |
 | Above the cube | 0.45 mm | 0.00 mm |
 | Grasp point | 0.33 mm | 0.04 mm |
-| Above the drop tray ($x = -0.20$, outside the training box) | 10.92 mm | 0.00 mm |
+| Above the tray (x = −0.20, outside the training box) | 10.92 mm | 0.00 mm |
 | Drop height over the tray | 7.34 mm | 0.00 mm |
 
-One target per point. An earlier model, trained before the orientation term was
-added to the loss, gave 0.30 mm at the grasp point and 7 to 11 mm above the
-tray.
-
-The campaign runs after the scenario. When it ran first, it nudged the cube and
-the scenario then used stale coordinates, which looked exactly like the network
-failing.
-
----
-
-## 7. Claims I withdrew
-
-Earlier versions of the README made three claims that the experiments above
-refuted:
-
-1. "A supervised network averages the 8 IK solutions and our PINN resolves the
-   ambiguity." Both dataset generators keep a single branch before training,
-   so there was nothing to average. The measured effect of the physics term was
-   21% in a single run (section 1); over five seeds on a test set it is not
-   significant (paper, Section 6.2).
-2. "The network is continuous where analytic solvers jump between branches."
-   The jumps are identical and no branch change occurs (section 3).
-3. "The network is faster than the closed-form solver." That first table timed
-   a cold PyTorch against a warm NumPy. A later version timed only the forward
-   pass, without the tensor conversion, and quoted a 182× speed-up over IKPY
-   measured across incompatible frames. Section 5 is the corrected protocol.
-
-What came out of fixing them:
-
-- every timing discards 200 warm-up calls and pins one thread;
-- accuracy is measured on the poses the simulated robot reaches, not by feeding
-  the network's output back through the same forward kinematics;
-- every closed-form solution is checked by forward kinematics before it enters
-  a dataset (the closed form returns finite but wrong angles for some branch
-  combinations, up to 784 mm off, so filtering on NaN is not enough);
-- experiments share one cached dataset and report its fingerprint.
+The campaign runs after the scenario. Run first, it nudged the cube and the scenario then used stale coordinates.

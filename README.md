@@ -1,146 +1,48 @@
 # UR5e Neural Kinematics
 
-A small neural network that solves inverse kinematics for a UR5e arm, trained through a differentiable copy of the robot's forward kinematics. On 2,021 held-out test targets it is 0.19 mm off on average and takes 0.53 ms per solve. It runs inside a camera-guided pick-and-place loop in Webots.
+A small neural network that solves inverse kinematics for a UR5e arm. I train it through a differentiable PyTorch copy of the robot's forward kinematics, and it runs inside a camera-guided pick-and-place loop in Webots. Personal project, August to September 2026.
 
-The full write-up is [`paper/main.pdf`](paper/main.pdf), a 12-page preprint with the multi-seed results, the verification and the references.
+The full write-up, with the multi-seed results and the verification, is [`paper/main.pdf`](paper/main.pdf) (12 pages).
 
 [![smoke](https://github.com/clementdumeril/ur5e-neural-kinematics/actions/workflows/smoke.yml/badge.svg)](https://github.com/clementdumeril/ur5e-neural-kinematics/actions/workflows/smoke.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ![UR5e in Webots: the camera finds the cube, the network solves each move, the arm grasps the cube and drops it in the tray](assets/demo.gif)
 
-*One run of [`my_first_simulation_pandahand.wbt`](webots/worlds/my_first_simulation_pandahand.wbt) at 2× speed, recorded with [`capture_recorder.py`](webots/controllers/capture_recorder/capture_recorder.py).*
-
-I built this as a personal project in August and September 2026, on top of an open-source Webots pick-and-place scene where the arm finds a red cube with its camera, turns its position into six joint angles, grasps it and drops it in a tray. I wanted to know whether a small network could do the IK step in that loop, and what training it through the robot's kinematics buys over plain regression on joint angles.
-
-The network solves position IK with the tool held pointing down (R³ → R⁶). It takes no orientation as input, so this is not full 6-DoF pose IK. I also fixed the IK branch in the data generator rather than learning it, because the multi-head model that does learn it has about twice the error on this task (0.40 against 0.21 mm on the test set).
-
-Stack: PyTorch, Webots, DH kinematics, geometric Jacobian and damped least squares, homography calibration.
+*One run of [`my_first_simulation_pandahand.wbt`](webots/worlds/my_first_simulation_pandahand.wbt) at 2× speed.*
 
 ## Results
 
 | | Value | Source |
 | :-- | --: | :-- |
-| Position / orientation error of the shipped model, 2,021 held-out test targets | 0.191 mm / 0.009° | [`C_shipped.json`](results/seed_study/C_shipped.json) |
-| Same architecture and loss, 5 seeds, smaller training split (16.2k targets), test set | 0.214 ± 0.039 mm | [`results/seed_study/`](results/seed_study/) |
-| Solve time, median, one thread, tensor conversion included | 0.531 ms | [`benchmark.json`](results/benchmark/benchmark.json) |
-| Against IKPy on the same pose problem / against the closed-form solver | 72× faster / 2.3× slower | same |
-| Effect of the FK terms on single-branch data, 5 paired seeds | 11% lower on average, not significant (95% CI −13% to +34%) | [`results/seed_study/`](results/seed_study/) |
-| Branch-mixed data, no labels: IK branches recovered with 1 → 8 heads | 13% → 78% (4 branches), 14% → 51% (8 branches) | [`results/seed_study/`](results/seed_study/) |
+| Position error, 2,021 held-out test targets | 0.19 mm | [`C_shipped.json`](results/seed_study/C_shipped.json) |
+| Solve time, median, one thread | 0.53 ms | [`benchmark.json`](results/benchmark/benchmark.json) |
+| Against IKPy on the same pose problem | 72× faster | same |
+| Grasp point, closed camera loop in Webots, measured homography | 0.33 mm | [`closed_loop_console.txt`](results/webots/closed_loop_console.txt) |
 
-![IK solve time for six solvers](assets/fig_benchmark.svg)
+A multi-head version trained on branch-mixed data without labels recovers 51% of the 8 IK branches with 8 heads, but has about twice the error, so the shipped model keeps one branch.
 
-*Same 200 pose targets for every solver, one thread, 200 warm-up calls on other targets. From the rest configuration, IKPy and single-start damped least squares fail on 58% and 60% of targets.*
+The network solves position IK with the tool pointing down (R³ → R⁶), not full 6-DoF pose IK. The closed-form solver is still 2.3× faster.
 
 ## What I built
 
-I started from [`allan-almeida1/ur5-pick-and-place-webots`](https://github.com/allan-almeida1/ur5-pick-and-place-webots) (MIT). It gave me the Webots scene, a NumPy Denavit–Hartenberg forward kinematics, the closed-form IK with its 8 branches, quintic trajectories and the device wrappers in `ur5.py`. The rest is mine; [`CREDITS.md`](CREDITS.md) draws the line file by file.
+I started from [`allan-almeida1/ur5-pick-and-place-webots`](https://github.com/allan-almeida1/ur5-pick-and-place-webots) (MIT), which gave me the Webots scene, a NumPy DH forward kinematics, the closed-form IK and the device wrappers. On top of it I wrote:
 
-![PINN6DOF architecture and training loss](assets/fig_architecture.svg)
+- [`ur5_pytorch_fk.py`](src/kinematics/ur5_pytorch_fk.py): the DH chain as a batched PyTorch module, so an end-effector error can send a gradient back to the joint angles.
+- [`pinn.py`](src/models/pinn.py) and [`train_true_pinn.py`](src/training/train_true_pinn.py): the MLP (530k parameters) and its training. The loss is computed on the pose the predicted angles reach, plus a data term that keeps one IK branch. On single-branch data the FK terms gave no significant gain over five seeds.
+- [`multihead.py`](src/models/multihead.py): K heads with a winner-take-all loss, trained without branch labels.
+- [`jacobian.py`](src/kinematics/jacobian.py) and [`ik_dls.py`](src/kinematics/ik_dls.py): a geometric Jacobian and a damped least-squares solver, used as baselines.
+- A fix to the inherited closed form, which returned elbow-down solutions about 0.78 m off. All eight branches now round-trip and the smoke test checks them.
+- Perception: the inherited pixel-to-table constants were 148 mm off, so I fit a homography from a calibration grid (1.1 mm median residual). A color threshold beat the VGG16 regressor I tried (8 mm against 49 mm).
+- Control: a closed-loop joint hold at the end of each move, which removed 114 mm of open-loop error.
 
-### Differentiable forward kinematics
-
-[`ur5_pytorch_fk.py`](src/kinematics/ur5_pytorch_fk.py) rewrites the UR5e DH chain as a batched PyTorch module: six homogeneous transforms multiplied with `torch.bmm`. This lets an end-effector error in meters send a gradient back to the joint angles.
-
-### The network
-
-[`pinn.py`](src/models/pinn.py), class `PINN6DOF`, is the MLP in the figure above, with 530,438 parameters. I used SiLU because it is smooth and the gradient has to pass through the sines and cosines of the FK. I did not compare it against ReLU.
-
-### The loss
-
-In [`train_true_pinn.py`](src/training/train_true_pinn.py) the error is computed on the pose the predicted angles reach, and a data term keeps the network on one IK branch. On single-branch data the FK terms gave no reliable gain over the data term alone (ablation below). They matter on branch-mixed data, where a loss on the reached pose does not average the branches. Adam, 1e-3 decayed to 2e-5, batch 256, 100 epochs.
-
-<details>
-<summary>The full loss and the reasoning behind it</summary>
-
-$$L = 0.1 \cdot \lVert q - q_{ref} \rVert^2 + \lVert p - p^{*} \rVert^2 + r_{tool}^2 \cdot \lVert R - R_{ref} \rVert_F^2$$
-
-- $r_{tool} = 0.05$ m converts a rotation error into the tip displacement it causes (1° ≈ 0.9 mm), so both FK terms are in m².
-- I compare against $FK(q_{ref})$ rather than a matrix rebuilt from Euler angles. Both sides go through the same kinematics, so an angle convention can't create a fake error. With no orientation term at all, turning q6 by 180° flips the gripper without moving the point, and the loss can't see it.
-- The geodesic angle involves an arccos whose gradient blows up near zero error, which is exactly where training has to converge. The Frobenius norm doesn't have that problem.
-</details>
-
-### The dataset generator
-
-Also in [`train_true_pinn.py`](src/training/train_true_pinn.py). It draws 25,000 targets uniformly in x ∈ [0, 0.4], y ∈ [−0.9, −0.5], z ∈ [0.05, 0.45] m and solves each with the closed form on one branch (shoulder left, elbow up, wrist up). About 20,000 are reachable, split 90/10. The experiments use a separate 80/10/10 split, with the epoch chosen on validation and the error reported on test.
-
-### Multi-head IK
-
-[`multihead.py`](src/models/multihead.py), [`multihypothesis_ik.py`](experiments/multihypothesis_ik.py): a shared trunk with K heads, trained with a relaxed winner-take-all loss on data that mixes IK branches, without branch labels. At inference the FK scores the K proposals and the closest one wins.
-
-### Jacobian and damped least squares
-
-[`jacobian.py`](src/kinematics/jacobian.py) and [`ik_dls.py`](src/kinematics/ik_dls.py): a geometric Jacobian and an adaptive Levenberg–Marquardt IK, which I wrote as a benchmark baseline. The Jacobian matches a central-difference derivative of the FK to 3.2 × 10⁻¹⁰.
-
-### A fix to the inherited closed form
-
-When I round-tripped FK(IK(p)), every elbow-down solution of the inherited solver came back finite but about 0.78 m off: θ2 was chosen from the shoulder only, while θ3 followed the elbow (the "Theta 2" block of [`inverse_kinematics`](src/control/ur5.py)). Pairing θ2 with the elbow choice makes all eight branches exact, and the smoke test now checks them.
-
-### Perception
-
-Code is in [`ur5.py`](src/control/ur5.py#L1015) (`vision_calibration`, `pixel_to_robot`, [`detect_cube_color`](src/control/ur5.py#L1156)) and [`data_collector.py`](webots/controllers/data_collector/data_collector.py).
-
-The inherited pixel-to-table constants came from another scene and were 148 mm off, so I wrote a calibration run that places the cube on a grid across the camera's view and fits a homography with RANSAC (1.1 mm median residual). The camera mount was also tilted by 17.2°; I found the optical axis by casting a ray along each local axis of the camera and corrected the mount to 0.07°. For detection, a color threshold plus centroid gave 8 mm of error, against 49 mm for the VGG16 regressor I tried on the same 200 images, so I dropped the VGG16.
-
-### Control
-
-In [`move_to_config`](src/control/ur5.py#L730) (and the neural IK bridge in [`move_to_pose`](src/control/ur5.py#L889)) I added a closed-loop hold on joint position at the end of each move. It removed 114 mm of error that built up in open loop.
-
-## How it runs in Webots
-
-![Deployment pipeline in Webots](assets/workflow.svg)
-
-The network solves every move to the cube and to the tray. The camera reading pose (x = −0.10 m) is outside the training box, where the network would be 3.2 mm off and shift the camera, so that one move stays on the closed form. The tray (x = −0.20 m) is outside the box too; the network is 7 to 11 mm off there, which the drop tolerates.
-
-## How I checked it
-
-### Loss ablation
-
-Over 5 paired seeds on a held-out test set, the FK terms move the error from 0.241 ± 0.021 to 0.214 ± 0.039 mm. They help in 3 of 5 seeds, and the difference is not significant (p = 0.26).
-
-![Effect of the physics term](assets/fig_ablation.svg)
-
-<details>
-<summary>Protocol, the earlier 21% figure, and the branch-mixed case</summary>
-
-Same data, architecture and schedule; only the loss and the seed change. Epoch chosen on validation, error measured on 2,021 test targets. An earlier version of this README reported a 21% reduction from a single run whose epoch was chosen and reported on the same validation set. It does not hold over seeds. On branch-mixed data a supervised network collapses to 911 mm, the average of several valid configurations, and even with the FK terms weighted 20× it only reaches 3.68 mm with 71.6° of orientation error. That single-run 2 × 3 table is in [`docs/experiments.md`](docs/experiments.md#1-physics-term-ablation). The paper re-runs its single-branch half over seeds (Section 6.2).
-</details>
-
-### Multi-head sweep
-
-On branch-mixed data without branch labels, more heads recover more of the solution set but don't get more accurate. Every run with 2 to 8 heads stays between 0.26 and 0.62 mm.
-
-![Multi-head sweep over K](assets/fig_multihead.svg)
-
-<details>
-<summary>The single-head case, eight branches, and the cost</summary>
-
-With one head and the FK loss alone, the network settles on one branch by itself in 2 of 3 seeds (0.33 to 0.44 mm) and stalls between branches in the third (4.4 and 8.8 mm), so the 911 mm collapse comes from the supervised term on mixed labels, not from having a single output. I ran the sweep on the four elbow-up branches and, after the solver fix, on all eight. Compared with single-branch training, two heads have about twice the error and are 8× slower (4.0 against 0.53 ms). The tables are in Section 6.3 of the paper.
-</details>
-
-### Error on the simulated robot
-
-In the closed camera-guided loop, with the cube located through the measured homography, the network is 0.33 mm off at the grasp point and 0.45 mm above the cube, against at most 0.04 mm for the arm's own repeatability. Above the tray, outside the training box, it is 7 to 11 mm off. I measured this on the shipped model in October 2026, in the same run where the grasp succeeded ([`closed_loop_console.txt`](results/webots/closed_loop_console.txt)).
-
-<details>
-<summary>How it is measured</summary>
-
-`mesurer_erreur_pinn()` sends the arm to the same target once with the closed form and once with the network, then compares the poses reached in the physics engine (not the network's own FK). There is one target per point, so these are single measurements. An earlier model, trained without the orientation term, gave 0.30 mm at the grasp point.
-</details>
-
-### Corrections
-
-I removed three claims from earlier versions of this README once I measured them; [`docs/experiments.md`](docs/experiments.md#7-claims-i-withdrew) lists them. Two more corrections in October 2026: the 21% gain from the FK terms did not hold over five seeds on a test set, and the statement in `docs/` that only 4 of the 8 IK branches exist with the tool pointing down was wrong (it came from the closed-form bug above).
+[`CREDITS.md`](CREDITS.md) lists what I inherited and what I wrote. The full tables are in [`docs/experiments.md`](docs/experiments.md).
 
 ## Limitations
 
-![Position error across the workspace](assets/fig_workspace_error.png)
-
-On this z = 0.25 m slice the median error is 0.176 mm inside the training box and 14.3 mm outside it.
-
-Past the reach limit the network still returns six angles, up to 1.78 m off, with no warning, where the closed form raises an exception. A real deployment needs a reachability check in front of the network.
-
-It covers one tool orientation and one IK branch, so no side approach and no elbow-down route around an obstacle. Everything runs in simulation.
+- The error grows outside the training box: 14.3 mm median there on a z = 0.25 m slice, 7 to 11 mm above the tray.
+- Past the reach limit the network still returns six angles, up to 1.78 m off, with no warning. It needs a reachability check in front of it.
+- One tool orientation, one IK branch, simulation only.
 
 ## Reproduce
 
@@ -148,56 +50,19 @@ It covers one tool orientation and one IK branch, so no side approach and no elb
 git clone https://github.com/clementdumeril/ur5e-neural-kinematics.git
 cd ur5e-neural-kinematics
 pip install -r requirements.txt
+
+python tests/test_smoke.py                    # seconds
+python src/training/train_true_pinn.py        # retrain, ~8 min
+python experiments/ablation_physics_loss.py   # loss ablation, ~1 h
+python experiments/multihypothesis_ik.py      # multi-head IK, ~55 min
+python experiments/benchmark_solveurs.py      # solver timing, ~4 min
+python experiments/figures.py                 # figures from the result files
 ```
 
-```bash
-python tests/test_smoke.py                    # imports, paths, a known target        (seconds)
-python src/training/train_true_pinn.py        # retrain the network                   (~8 min)
-python experiments/ablation_physics_loss.py   # loss ablation                         (~1 h)
-python experiments/multihypothesis_ik.py      # multi-head IK                         (~55 min)
-python experiments/mesure_continuite.py       # continuity and reach boundary         (~1 min)
-python experiments/benchmark_solveurs.py      # six solvers, timed                    (~4 min)
-python experiments/heatmap_erreur.py          # workspace error map                   (~3 min)
-python experiments/figures.py                 # SVG figures from the result files     (seconds)
-```
-
-For the simulation, install Webots R2023a or later (I tested on R2025a), open `webots/worlds/my_first_simulation_pandahand.wbt` and press Play. The worlds load the `UR5e`, `PandaHand` and `Table` PROTOs from GitHub, so the first launch needs an internet connection.
-
-<details>
-<summary>If Webots picks the wrong Python interpreter</summary>
-
-The controllers use whichever `python` is on your `PATH`. To force one, add this to `webots/controllers/*/runtime.ini`:
-
-```ini
-[python]
-COMMAND = C:/path/to/your/python.exe
-```
-
-Webots does not accept `#` comments in `runtime.ini`.
-</details>
-
-<details>
-<summary>Repository layout</summary>
-
-```
-src/kinematics/    DH forward kinematics (NumPy and differentiable PyTorch), Jacobian,
-                   damped least squares, closed-form IK, quintic trajectories, IKPY baseline
-src/models/        pinn.py (single output), multihead.py (K heads)
-src/training/      physics-informed and supervised training
-src/control/       ur5.py: robot driver, IK bridge, perception
-experiments/       ablation, multi-head IK, continuity, benchmark, error map, figures
-webots/            worlds and controllers
-checkpoints/       trained weights and raw experiment results (JSON)
-data/              camera calibration and homography
-vision/            VGG16 notebook (negative result; weights not tracked)
-docs/              full experiment tables
-tests/             smoke test, run by CI
-```
-
-</details>
+For the simulation, open `webots/worlds/my_first_simulation_pandahand.wbt` in Webots R2023a or later (tested on R2025a) and press Play. The first launch needs internet to fetch the PROTOs. To force a Python interpreter, set `COMMAND` under `[python]` in `webots/controllers/*/runtime.ini`.
 
 ## Credits
 
-The Webots scene and the base of `src/control/ur5.py` (DH kinematics, closed-form IK, quintic trajectories, device wrappers) come from [`allan-almeida1/ur5-pick-and-place-webots`](https://github.com/allan-almeida1/ur5-pick-and-place-webots) by Allan Souza Almeida, under the MIT license. [`CREDITS.md`](CREDITS.md) lists what was inherited and what I wrote.
+The Webots scene and the base of `src/control/ur5.py` come from [`allan-almeida1/ur5-pick-and-place-webots`](https://github.com/allan-almeida1/ur5-pick-and-place-webots) by Allan Souza Almeida, MIT license.
 
 Clément Dumeril · [clement.dumeril.net](https://clement.dumeril.net) · MIT License, see [`LICENSE`](LICENSE)
