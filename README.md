@@ -194,7 +194,6 @@ docs/              full experiment tables
 tests/             smoke test, run by CI
 ```
 
-`GUIDE_DES_CODES.md` and `DOCUMENTATION.md` are my working notes, in French. Some numbers in them predate the current results, so treat this README and the paper as the reference.
 </details>
 
 ## Credits

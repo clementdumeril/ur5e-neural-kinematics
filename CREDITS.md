@@ -40,7 +40,7 @@ Control and validation:
 - `mesurer_erreur_pinn()`, which measures the network's error on the robot rather than on its own model, by comparing the poses actually reached against the closed-form solver;
 - the timing protocol (200 discarded warm-up calls, single thread) and the benchmark against IKPY.
 
-Documentation: `README.md`, `DOCUMENTATION.md` and the 25-chapter `GUIDE_DES_CODES.md`.
+Documentation: `README.md`.
 
 ## License
 

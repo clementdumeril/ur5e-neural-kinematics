@@ -20,7 +20,7 @@ ur5 = UR5()
 
 # Vision desactivee par defaut : la calibration pixels -> coordonnees reelles du
 # VGG16 est fausse pour ce monde (~148 mm d'erreur, cible hors de portee).
-# Voir GUIDE_DES_CODES.md 15. Passer a True pour retester.
+# Passer a True pour retester.
 USE_VISION = False
 
 # Position initiale stable
