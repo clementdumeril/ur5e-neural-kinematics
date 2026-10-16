@@ -95,6 +95,42 @@ to. The contributions are:
         inherited closed-form solver.
 \end{itemize}
 
+\begin{figure}[t]
+\centering
+\begin{minipage}[c]{0.40\linewidth}
+\includegraphics[width=\linewidth]{figures/webots_frame.png}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.57\linewidth}
+\centering
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners=2pt, minimum height=7mm, inner sep=2.5pt, font=\small, align=center},
+  net/.style={box, draw=accent, fill=accent!8, text=accent!80!black},
+  arr/.style={-{Stealth[length=1.8mm]}, semithick},
+  node distance=4mm and 4mm]
+\node[box] (cam) {camera\\[-1pt]{\scriptsize colour + homography}};
+\node[box, right=of cam] (t) {$p^\star$};
+\node[net, right=of t] (f) {MLP $f_\theta$};
+\node[box, right=12mm of f] (q) {$q\in\mathbb{R}^6$};
+\node[box, above=5mm of q] (arm) {UR5e};
+\node[box, below=6mm of q] (fk) {differentiable FK};
+\node[box] (L) at (f |- fk) {pose error};
+\draw[arr] (cam) -- (t); \draw[arr] (t) -- (f); \draw[arr] (f) -- (q);
+\draw[arr] (q) -- (arm);
+\draw[arr, accent, dashed] (q) -- (fk);
+\draw[arr, accent, dashed] (fk) -- (L);
+\draw[arr, accent, dashed] (L) -- node[left, font=\scriptsize] {gradient} (f);
+\node[font=\scriptsize, text=accent!80!black] at ($(L.south)!0.5!(fk.south)+(0,-2.5mm)$) {training only};
+\end{tikzpicture}
+\end{minipage}
+\caption{Overview. Left: the deployed network grasping the cube in Webots.
+Right: an overhead camera locates the cube (colour threshold, homography), the
+network maps the target position $p^\star$ to six joint angles, and the joint
+controller drives the arm. During training only (dashed), the predicted angles
+go through a differentiable forward-kinematics model and the pose error is
+backpropagated into the network.}
+\label{fig:overview}
+\end{figure}
+
 %=============================================================================
 \section{Related work}
 %=============================================================================

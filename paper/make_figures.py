@@ -170,9 +170,24 @@ def fig_workspace():
           f"outside reach max {err[~reach].max():.0f} mm)")
 
 
+def fig_overview_frame():
+    """Grasp panel of webots_sequence.png, cropped for Figure 1."""
+    from PIL import Image
+    seq = np.asarray(Image.open(os.path.join(FIG, 'webots_sequence.png')).convert('RGB'))
+    white = (seq > 245).all(axis=2).all(axis=0)        # white gutter columns between panels
+    edges = np.flatnonzero(np.diff(white.astype(int)))
+    starts = [0] + [e + 1 for e in edges if white[e]]
+    ends = [e + 1 for e in edges if not white[e]] + [seq.shape[1]]
+    x0, x1 = starts[1], ends[1]                         # second panel: gripper on the cube
+    frame = seq[40:, x0 + 60:x1]                        # drop the "Neural IK" label
+    Image.fromarray(frame).save(os.path.join(FIG, 'webots_frame.png'))
+    print(f"  webots_frame.png {frame.shape[1]}x{frame.shape[0]}")
+
+
 if __name__ == '__main__':
     os.makedirs(FIG, exist_ok=True)
     # figures/webots_sequence.png is written by experiments/make_demo_gif.py
+    fig_overview_frame()
     fig_ablation()
     fig_multihead()
     fig_benchmark()
