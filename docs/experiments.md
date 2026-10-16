@@ -1,16 +1,17 @@
 # Experiments in detail
 
-This page holds the full tables behind the README. Every number comes from a
+These are the full tables behind the README. Every number comes from a
 script in `experiments/` and, where one exists, from its JSON output in
 `checkpoints/`.
 
-> **Superseded in part.** Sections 1 and 2 are the original single-run
-> experiments (seed 42, epoch chosen and reported on the same validation set).
-> The multi-seed re-run on a held-out test set, in
-> [`paper/main.pdf`](../paper/main.pdf) and `results/seed_study/`, replaces them
-> where they differ: the 21% gain of section 1 is not significant over five
-> seeds, and a single head trained on the FK loss alone usually learns one
-> branch (section 2 reported 8.88 mm from a single run; over seeds it is 0.33 to 0.44 mm in two runs out of three).
+Sections 1 and 2 are partly out of date. They are the original single-run
+experiments (seed 42, epoch chosen and reported on the same validation set).
+Where they differ, the multi-seed re-run on a held-out test set in
+[`paper/main.pdf`](../paper/main.pdf) and `results/seed_study/` replaces them:
+the 21% gain of section 1 is not significant over five seeds, and a single head
+trained on the FK loss alone usually learns one branch (section 2 reported
+8.88 mm from a single run; over seeds it is 0.33 to 0.44 mm in two runs out of
+three).
 
 - [1. Physics-term ablation](#1-physics-term-ablation)
 - [2. Multi-head IK for the multi-valued problem](#2-multi-head-ik-for-the-multi-valued-problem)
@@ -38,7 +39,8 @@ them, and the weight $w_p$ of the physics term.
 | Branches mixed | 911 mm / 99.0° | 69.6 mm / 98.6° | 3.68 mm / 71.6° |
 
 On single-branch data, which is what the shipped model uses, the physics term
-lowers the position error by 21% (0.238 to 0.187 mm). Raising $w_p$ to 20
+lowered the position error by 21% in this single run (0.238 to 0.187 mm); it
+does not hold over five seeds (see the note at the top). Raising $w_p$ to 20
 gains another 0.007 mm of position but makes orientation 4× worse, so I kept
 $w_p = 1$.
 
@@ -204,7 +206,7 @@ SO(3). The damping is adaptive: zero when the arm is well conditioned, growing
 as the smallest singular value of $J$ approaches a threshold.
 
 From a single fixed start it either converges in about 23 iterations to
-sub-micron accuracy or stalls in a local minimum tens of millimetres away. It
+sub-micron accuracy or stalls in a local minimum tens of millimeters away. It
 fails on 59.5% of workspace targets. Eight random restarts bring that to 0%
 at roughly twice the cost.
 
