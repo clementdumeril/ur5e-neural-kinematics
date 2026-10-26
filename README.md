@@ -1,6 +1,6 @@
 # UR5e Neural Kinematics
 
-A small neural network that solves inverse kinematics for a UR5e arm. I train it through a differentiable PyTorch copy of the robot's forward kinematics, and it runs inside a camera-guided pick-and-place loop in Webots. Personal project, August to September 2026.
+A small neural network that solves inverse kinematics for a UR5e arm. I train it through a differentiable PyTorch copy of the robot's forward kinematics, and it runs inside a camera-guided pick-and-place loop in Webots. Personal project, August to October 2026.
 
 The full write-up, with the multi-seed results and the verification, is [`paper/main.pdf`](paper/main.pdf) (12 pages).
 
@@ -17,10 +17,10 @@ The full write-up, with the multi-seed results and the verification, is [`paper/
 | :-- | --: | :-- |
 | Position error, 2,021 held-out test targets | 0.19 mm | [`C_shipped.json`](results/seed_study/C_shipped.json) |
 | Solve time, median, one thread | 0.53 ms | [`benchmark.json`](results/benchmark/benchmark.json) |
-| Against IKPy on the same pose problem | 72× faster | same |
-| Grasp point, closed camera loop in Webots, measured homography | 0.33 mm | [`closed_loop_console.txt`](results/webots/closed_loop_console.txt) |
+| Against IKPy on the same pose problem (IKPy fails on 58 % of targets) | 72× faster | same |
+| Network vs closed form at the grasp point, Webots closed camera loop (one run; mean 4.8 mm over 4 points) | 0.33 mm | [`closed_loop_console.txt`](results/webots/closed_loop_console.txt) |
 
-A multi-head version trained on branch-mixed data without labels recovers 51% of the 8 IK branches with 8 heads, but has about twice the error, so the shipped model keeps one branch.
+A multi-head version trained on branch-mixed data without labels recovers 51% of the 8 IK branches with 8 heads, but has about 1.5 times the error (0.31 against 0.19 to 0.21 mm), so the shipped model keeps one branch.
 
 The network solves position IK with the tool pointing down (R³ → R⁶), not full 6-DoF pose IK. The closed-form solver is still 2.3× faster.
 
@@ -34,7 +34,7 @@ I started from [`allan-almeida1/ur5-pick-and-place-webots`](https://github.com/a
 - [`jacobian.py`](src/kinematics/jacobian.py) and [`ik_dls.py`](src/kinematics/ik_dls.py): a geometric Jacobian and a damped least-squares solver, used as baselines.
 - A fix to the inherited closed form, which returned elbow-down solutions about 0.78 m off. All eight branches now round-trip and the smoke test checks them.
 - Perception: the inherited pixel-to-table constants were 148 mm off, so I fit a homography from a calibration grid (1.1 mm median residual). A color threshold beat the VGG16 regressor I tried (8 mm against 49 mm).
-- Control: a closed-loop joint hold at the end of each move, which removed 114 mm of open-loop error.
+- Control: a closed-loop joint hold at the end of each move, which removed up to 114 mm of open-loop error.
 
 [`CREDITS.md`](CREDITS.md) lists what I inherited and what I wrote. The full tables are in [`docs/experiments.md`](docs/experiments.md).
 
