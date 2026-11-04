@@ -1,0 +1,8 @@
+# Exact versions used for the results in results/ and paper/main.pdf
+# (paper/main.tex, reproducibility statement). Python 3.11.9, CPU only.
+# Webots R2025a provides the `controller` module.
+numpy==2.2.6
+scipy==1.15.2
+matplotlib==3.10.6
+torch==2.8.0
+ikpy==4.0.0

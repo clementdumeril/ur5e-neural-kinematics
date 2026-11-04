@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="610" viewBox="0 0 1200 610" font-family="Arial, Helvetica, sans-serif">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#444"/>
+    </marker>
+  </defs>
+  <rect x="1" y="1" width="1198" height="608" rx="16" fill="#FFFFFF" stroke="#D0D7DE" stroke-width="1.5"/>
+
+  <!-- zones -->
+  <rect x="24" y="44" width="776" height="184" rx="10" fill="none" stroke="#B8C2CC" stroke-width="1.2" stroke-dasharray="5 4"/>
+  <rect x="24" y="260" width="776" height="168" rx="10" fill="none" stroke="#B8C2CC" stroke-width="1.2" stroke-dasharray="5 4"/>
+  <rect x="820" y="44" width="356" height="384" rx="10" fill="none" stroke="#B8C2CC" stroke-width="1.2" stroke-dasharray="5 4"/>
+  <g font-size="13" fill="#5A6875" letter-spacing="1.2">
+    <text x="36" y="34">TRAINING, ABOUT 8 MIN ON A LAPTOP CPU</text>
+    <text x="36" y="250">PICK-AND-PLACE IN WEBOTS</text>
+    <text x="832" y="34">RESULTS</text>
+  </g>
+
+  <!-- training row -->
+  <rect x="40" y="108" width="166" height="72" rx="10" fill="#FBE5CF" stroke="#C97A2B" stroke-width="1.5"/>
+  <text x="123" y="140" font-size="20" fill="#15202A" text-anchor="middle">20,201 targets</text>
+  <text x="123" y="164" font-size="15" fill="#5A6875" text-anchor="middle">reachable, tool down</text>
+
+  <line x1="206" y1="144" x2="242" y2="144" stroke="#444" stroke-width="2" marker-end="url(#ah)"/>
+  <rect x="244" y="108" width="160" height="72" rx="10" fill="#E2EBFA" stroke="#1F5FBF" stroke-width="1.5"/>
+  <text x="324" y="140" font-size="24" fill="#15202A" text-anchor="middle">MLP</text>
+  <text x="324" y="164" font-size="15" fill="#5A6875" text-anchor="middle">3 x 512, 530k params</text>
+
+  <line x1="404" y1="144" x2="438" y2="144" stroke="#444" stroke-width="2" marker-end="url(#ah)"/>
+  <text x="421" y="134" font-size="16" fill="#15202A" text-anchor="middle" font-family="Georgia, serif" font-style="italic">q</text>
+  <rect x="440" y="108" width="186" height="72" rx="10" fill="#DCF1EE" stroke="#0D7A6F" stroke-width="1.5"/>
+  <text x="533" y="140" font-size="20" fill="#15202A" text-anchor="middle">Differentiable FK</text>
+  <text x="533" y="164" font-size="15" fill="#5A6875" text-anchor="middle">UR5e DH chain, torch</text>
+
+  <line x1="626" y1="144" x2="662" y2="144" stroke="#444" stroke-width="2" marker-end="url(#ah)"/>
+  <text x="644" y="134" font-size="16" fill="#15202A" text-anchor="middle" font-family="Georgia, serif" font-style="italic">p, R</text>
+  <rect x="664" y="108" width="120" height="72" rx="10" fill="#F1F4F6" stroke="#8A9AA8" stroke-width="1.5"/>
+  <text x="724" y="140" font-size="22" fill="#15202A" text-anchor="middle">Loss</text>
+  <text x="724" y="164" font-size="15" fill="#5A6875" text-anchor="middle">pose + angles</text>
+
+  <!-- labels from the closed form, above -->
+  <path d="M 120,108 L 120,76 L 724,76 L 724,106" fill="none" stroke="#444" stroke-width="1.5" marker-end="url(#ah)"/>
+  <rect x="330" y="66" width="200" height="20" fill="#FFFFFF"/>
+  <text x="430" y="81" font-size="15" fill="#5A6875" text-anchor="middle"><tspan font-family="Georgia, serif" font-style="italic">q</tspan><tspan baseline-shift="sub" font-size="11">ref</tspan> from the closed form</text>
+
+  <!-- gradient back through the FK -->
+  <path d="M 724,180 L 724,206 L 364,206 L 364,182" fill="none" stroke="#1F5FBF" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#ah)"/>
+  <rect x="440" y="196" width="180" height="20" fill="#FFFFFF"/>
+  <text x="530" y="211" font-size="15" fill="#1F5FBF" text-anchor="middle">gradient through the FK</text>
+
+  <!-- checkpoint into the loop -->
+  <line x1="290" y1="182" x2="290" y2="330" stroke="#444" stroke-width="2" stroke-dasharray="2 3" marker-end="url(#ah)"/>
+  <text x="280" y="290" font-size="15" fill="#5A6875" text-anchor="end">trained weights</text>
+
+  <!-- deployment row -->
+  <rect x="40" y="332" width="120" height="72" rx="10" fill="#FBE5CF" stroke="#C97A2B" stroke-width="1.5"/>
+  <text x="100" y="364" font-size="20" fill="#15202A" text-anchor="middle">Camera</text>
+  <text x="100" y="388" font-size="15" fill="#5A6875" text-anchor="middle">+ homography</text>
+  <line x1="160" y1="368" x2="242" y2="368" stroke="#444" stroke-width="2" marker-end="url(#ah)"/>
+  <text x="203" y="358" font-size="16" fill="#15202A" text-anchor="middle"><tspan font-family="Georgia, serif" font-style="italic">x, y</tspan></text>
+  <rect x="244" y="332" width="160" height="72" rx="10" fill="#E2EBFA" stroke="#1F5FBF" stroke-width="1.5"/>
+  <text x="324" y="364" font-size="22" fill="#15202A" text-anchor="middle">Neural IK</text>
+  <text x="324" y="388" font-size="15" fill="#5A6875" text-anchor="middle">one forward pass</text>
+  <line x1="404" y1="368" x2="438" y2="368" stroke="#444" stroke-width="2" marker-end="url(#ah)"/>
+  <text x="421" y="358" font-size="16" fill="#15202A" text-anchor="middle" font-family="Georgia, serif" font-style="italic">q</text>
+  <rect x="440" y="332" width="186" height="72" rx="10" fill="#F1F4F6" stroke="#8A9AA8" stroke-width="1.5"/>
+  <text x="533" y="364" font-size="20" fill="#15202A" text-anchor="middle">Quintic trajectory</text>
+  <text x="533" y="388" font-size="15" fill="#5A6875" text-anchor="middle">then position hold</text>
+  <line x1="626" y1="368" x2="652" y2="368" stroke="#444" stroke-width="2" marker-end="url(#ah)"/>
+
+  <image href="ov_ur5e.png" x="654" y="276" width="134" height="102" preserveAspectRatio="xMidYMid slice"/>
+  <rect x="654" y="276" width="134" height="102" rx="6" fill="none" stroke="#8A9AA8" stroke-width="1"/>
+  <text x="721" y="398" font-size="17" fill="#15202A" text-anchor="middle">UR5e</text>
+  <text x="721" y="417" font-size="15" fill="#5A6875" text-anchor="middle">Panda hand</text>
+
+  <!-- results column -->
+  <text x="840" y="104" font-size="44" fill="#B8461F" font-weight="bold">0.19 mm</text>
+  <text x="840" y="128" font-size="16" fill="#15202A">mean error, 2,021 held-out targets</text>
+  <text x="840" y="168" font-size="26" fill="#15202A">0.53 ms</text>
+  <text x="946" y="160" font-size="15" fill="#5A6875">per solve, one thread;</text>
+  <text x="946" y="178" font-size="15" fill="#5A6875">IKPy 38.1 ms</text>
+  <image href="ov_heatmap.png" x="840" y="190" width="160" height="131" preserveAspectRatio="xMidYMid slice"/>
+  <rect x="840" y="190" width="160" height="131" rx="6" fill="none" stroke="#8A9AA8" stroke-width="1"/>
+  <text x="1012" y="214" font-size="15" fill="#15202A">error at</text>
+  <text x="1012" y="233" font-size="15" fill="#15202A"><tspan font-family="Georgia, serif" font-style="italic">z</tspan> = 0.25 m</text>
+  <text x="1012" y="264" font-size="15" fill="#5A6875">0.18 mm inside</text>
+  <text x="1012" y="283" font-size="15" fill="#5A6875">the training box,</text>
+  <text x="1012" y="302" font-size="15" fill="#5A6875">14.3 mm outside</text>
+  <line x1="840" y1="344" x2="1160" y2="344" stroke="#E1E6EA" stroke-width="1"/>
+  <text x="840" y="372" font-size="16" fill="#15202A">In Webots: grasp point 0.33 mm</text>
+  <text x="840" y="392" font-size="16" fill="#15202A">from the closed-form pose</text>
+  <text x="840" y="414" font-size="15" fill="#5A6875">one run, one cube position</text>
+
+  <!-- band: the GIF as 4 frames -->
+  <g font-size="15" fill="#15202A">
+    <image href="ov_seq0.png" x="40" y="448" width="196" height="110" preserveAspectRatio="xMidYMid slice"/>
+    <rect x="40" y="448" width="196" height="110" rx="6" fill="none" stroke="#8A9AA8" stroke-width="1"/>
+    <text x="40" y="580">1. find the cube</text>
+    <image href="ov_seq1.png" x="252" y="448" width="196" height="110" preserveAspectRatio="xMidYMid slice"/>
+    <rect x="252" y="448" width="196" height="110" rx="6" fill="none" stroke="#8A9AA8" stroke-width="1"/>
+    <text x="252" y="580">2. grasp</text>
+    <image href="ov_seq2.png" x="464" y="448" width="196" height="110" preserveAspectRatio="xMidYMid slice"/>
+    <rect x="464" y="448" width="196" height="110" rx="6" fill="none" stroke="#8A9AA8" stroke-width="1"/>
+    <text x="464" y="580">3. carry</text>
+    <image href="ov_seq3.png" x="676" y="448" width="196" height="110" preserveAspectRatio="xMidYMid slice"/>
+    <rect x="676" y="448" width="196" height="110" rx="6" fill="none" stroke="#8A9AA8" stroke-width="1"/>
+    <text x="676" y="580">4. in the tray</text>
+  </g>
+  <text x="896" y="478" font-size="15" fill="#5A6875">Every move solved by</text>
+  <text x="896" y="497" font-size="15" fill="#5A6875">the network except the</text>
+  <text x="896" y="516" font-size="15" fill="#5A6875">camera reading pose</text>
+  <text x="896" y="535" font-size="15" fill="#5A6875">(closed form). Tray points</text>
+  <text x="896" y="554" font-size="15" fill="#5A6875">7.3 and 10.9 mm off.</text>
+</svg>
