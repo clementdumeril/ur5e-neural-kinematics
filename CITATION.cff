@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite it as below."
+title: "Neural Inverse Kinematics Trained Through a Differentiable Forward Model: A Multi-Seed Study on the UR5e"
+authors:
+  - family-names: "Dumeril"
+    given-names: "Clément"
+    affiliation: "University of California, Berkeley"
+date-released: 2026-10-25
+license: MIT
+repository-code: "https://github.com/clementdumeril/ur5e-neural-kinematics"
+url: "https://github.com/clementdumeril/ur5e-neural-kinematics"
+type: software
